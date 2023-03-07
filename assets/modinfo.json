@@ -1,9 +1,9 @@
 ﻿{
-  "id": "testmod",
-  "name": "Test Mod",
-  "version": "0.1.0",
-  "authors": "Author",
-  "description": "Put a neat description here",
+  "id": "better-input-config",
+  "name": "Better Input Config",
+  "version": "1.0.0",
+  "authors": "Dual",
+  "description": "Doctors up the Input Settings menus to include modded keybinds and a cleaner interface.",
   "requirements": [],
   "requirements_names": [],
   "checksum_override_version": false
