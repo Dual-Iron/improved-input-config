@@ -1,4 +1,8 @@
-﻿namespace BetterInputConfig;
+﻿using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+
+namespace BetterInputConfig;
 
 public static class InputExtensions
 {
@@ -31,5 +35,165 @@ public static class InputExtensions
     public static CustomInput[] RawInputHistory(this Player p)
     {
         return Plugin.players.GetValue(p, _ => new()).rawInput;
+    }
+
+    internal static string ButtonText(int player, KeyCode keyCode, out Color? color)
+    {
+        color = null;
+        var text = keyCode.ToString();
+        if (text.Length > 14 && text.Substring(0, 14) == "JoystickButton" && int.TryParse(text.Substring(14, text.Length - 14), out int btn)) {
+            return ControllerButtonName(player, btn, out color);
+        }
+        if (text.Length > 15 && text.Substring(0, 8) == "Joystick" && int.TryParse(text.Substring(15, text.Length - 15), out int btn2)) {
+            return ControllerButtonName(player, btn2, out color);
+        }
+        if (KeyboardButtonName(keyCode) is string name) {
+            return name;
+        }
+        return text;
+    }
+    static string ControllerButtonName(int player, int joystickButton, out Color? color)
+    {
+        // Thank the internet honestly. It's not like I knew these mappings before googling them
+        var rw = RWCustom.Custom.rainWorld;
+        var controller = RWInput.PlayerRecentController(player, rw);
+        var ty = RWInput.PlayerControllerType(player, controller, rw);
+        if (ty == Options.ControlSetup.Preset.None) {
+            bool all = rw.options.allGamePads;
+            if (!all)
+                rw.options.ConvertFromSpecificGamepadToAll(); // Fix Joystick1Button1 silliness
+
+            ty = rw.options.controls[player].IdentifyGamepadPreset(); // Unfix it just-in-case
+
+            if (!all)
+                rw.options.ConvertFromAllGamepadsToSpecific();
+        }
+        if (ty == Options.ControlSetup.Preset.XBox) {
+            color = joystickButton switch {
+                0 => new Color32(60, 219, 78, 255),
+                1 => new Color32(208, 66, 66, 255),
+                2 => new Color32(64, 204, 208, 255),
+                3 => new Color32(236, 219, 51, 255),
+                _ => null
+            };
+            return joystickButton switch {
+                0 => "A",
+                1 => "B",
+                2 => "X",
+                3 => "Y",
+                4 => "LB",
+                5 => "RB",
+                6 => "Menu",
+                7 => "View",
+                8 => "LSB",
+                9 => "RSB",
+                12 => "XBox",
+                _ => $"Button {joystickButton}"
+            };
+        }
+        else if (ty == Options.ControlSetup.Preset.PS4DualShock || ty == Options.ControlSetup.Preset.PS5DualSense) {
+            color = joystickButton switch {
+                0 => new Color32(155, 173, 228, 255),
+                1 => new Color32(240, 110, 108, 255),
+                2 => new Color32(213, 145, 189, 255),
+                3 => new Color32(56, 222, 200, 255),
+                _ => null
+            };
+            return joystickButton switch {
+                0 => "X",
+                1 => "O",
+                2 => "Square",
+                3 => "Triangle",
+                4 => "L1",
+                5 => "R1",
+                6 => "Share",
+                7 => "Options",
+                8 => "LSB",
+                9 => "RSB",
+                12 => "PS",
+                13 => "Touchpad",
+                _ => $"Button {joystickButton}"
+            };
+        }
+        else if (ty == Options.ControlSetup.Preset.SwitchProController) {
+            color = null;
+            return joystickButton switch {
+                0 => "B",
+                1 => "A",
+                2 => "Y",
+                3 => "X",
+                4 => "L",
+                5 => "R",
+                6 => "ZL",
+                7 => "ZR",
+                8 => "-",
+                9 => "+",
+                10 => "LSB",
+                11 => "RSB",
+                12 => "Home",
+                13 => "Capture",
+                _ => $"Button {joystickButton}"
+            };
+        }
+        color = null;
+        Plugin.Logger.LogWarning($"Unrecognized controller type {ty}");
+        return $"Button {joystickButton}";
+    }
+    static string KeyboardButtonName(KeyCode kc)
+    {
+        string ret = kc switch {
+            KeyCode.Slash => "/",
+            KeyCode.Backslash => "\\",
+            KeyCode.LeftBracket => "[",
+            KeyCode.RightBracket => "]",
+            KeyCode.Minus => "-",
+            KeyCode.Equals => "=",
+            KeyCode.Plus => "+",
+            KeyCode.BackQuote => "`",
+            KeyCode.Semicolon => ";",
+            _ => null
+        };
+        if (ret == null) {
+            if (kc.ToString().StartsWith("Left")) {
+                return "L" + kc.ToString().Substring(4);
+            }
+            if (kc.ToString().StartsWith("Right")) {
+                return "R" + kc.ToString().Substring(5);
+            }
+        }
+        return ret;
+    }
+
+    internal static int KeybindsOfType(int playerNumber, KeyCode keyCode, int stopAt)
+    {
+        return AllKeybinds(playerNumber).Where(c => c == keyCode).Take(stopAt).Count();
+    }
+    internal static IEnumerable<KeyCode> AllKeybinds(int playerNumber)
+    {
+        // Deliberately only process player 0's pause button
+        Options.ControlSetup vanillaPlayer0 = RWCustom.Custom.rainWorld.options.controls[0];
+        if (vanillaPlayer0.gamePad)
+            yield return vanillaPlayer0.gamePadButtons[0];
+        else
+            yield return vanillaPlayer0.keyboardKeys[0];
+
+        // Start at index 1 to ignore pause button
+        Options.ControlSetup vanilla = RWCustom.Custom.rainWorld.options.controls[playerNumber];
+        if (vanilla.gamePad) {
+            for (int i = 1; i < vanilla.gamePadButtons.Length; i++) {
+                yield return vanilla.gamePadButtons[i];
+            }
+            foreach (var keybind in PlayerKeybind.keybinds) {
+                yield return keybind.gamepad[playerNumber];
+            }
+        }
+        else {
+            for (int i = 1; i < vanilla.keyboardKeys.Length; i++) {
+                yield return vanilla.keyboardKeys[i];
+            }
+            foreach (var keybind in PlayerKeybind.keybinds) {
+                yield return keybind.keyboard[playerNumber];
+            }
+        }
     }
 }

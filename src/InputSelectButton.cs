@@ -37,7 +37,7 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
 
     Options.ControlSetup ControlSetup => IndependentOfPlayer ? menu.manager.rainWorld.options.controls[0] : menu.CurrentControlSetup;
 
-    public InputSelectButton(MenuObject owner, PlayerKeybind keybind, bool compact, Vector2 pos) : this(owner, -1 - keybind.id, owner.menu.Translate(keybind.Name), compact, pos)
+    public InputSelectButton(MenuObject owner, PlayerKeybind keybind, bool compact, Vector2 pos) : this(owner, -1 - keybind.index, owner.menu.Translate(keybind.Name), compact, pos)
     {
         this.keybind = keybind;
     }
@@ -80,7 +80,7 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
         KeyCode current = CurrentlyDisplayed();
 
         // Blink red if conflicting keys on current character
-        int currentUses = Plugin.KeybindsOfType(Player, current, stopAt: 2);
+        int currentUses = InputExtensions.KeybindsOfType(Player, current, stopAt: 2);
         if ((blinkCounter % 20 < 10) && currentUses > 1) {
             return Color.red;
         }
@@ -99,7 +99,7 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
                 if (controls[player].gamePad && controls[Player].gamePadNumber != controls[player].gamePadNumber) {
                     return false;
                 }
-                return Plugin.KeybindsOfType(player, current, 1) > 0;
+                return InputExtensions.KeybindsOfType(player, current, 1) > 0;
             }
             // Hint at Survivor, Monk, Hunter, or Nightcat (respectively) having a duplicate key
             if (blinkCounter % 80 is < 20 && DuplicateKeys(0))              return Color.Lerp(color, new Color(1, 1, 1), 0.5f);
@@ -232,13 +232,13 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
     {
         recentlyUsedFlash = Mathf.Max(recentlyUsedFlash, 0.65f);
 
-        string text = Plugin.ButtonText(Player, CurrentlyDisplayed(), out buttonColor);
+        string text = InputExtensions.ButtonText(Player, CurrentlyDisplayed(), out buttonColor);
         if (text.EndsWith("Arrow")) {
             currentKey.label.alpha = 0;
             arrow.alpha = 1;
             arrow.rotation = text switch {
-                "LeftArrow" => -90,
-                "RightArrow" => 90,
+                "LArrow" => -90,
+                "RArrow" => 90,
                 "DownArrow" => 180,
                 _ => 0
             };

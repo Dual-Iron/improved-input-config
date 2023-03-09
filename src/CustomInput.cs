@@ -34,7 +34,7 @@ public sealed class CustomInput : IEquatable<CustomInput>
         bool gamePad = controllerType != Options.ControlSetup.Preset.KeyboardSinglePlayer;
         if (!gamePad) {
             foreach (var key in PlayerKeybind.keybinds) {
-                ret.pressed[key.id] = Input.GetKey(key.keyboard[player]);
+                ret.pressed[key.index] = Input.GetKey(key.keyboard[player]);
             }
             return ret;
         }
@@ -66,7 +66,7 @@ public sealed class CustomInput : IEquatable<CustomInput>
         }
 
         foreach (var key in PlayerKeybind.keybinds) {
-            ret.pressed[key.id] = RWInput.ResolveButtonDown(RWInput.ConvertGamepadKeyCode(key.gamepad[player]), plr, controller, controllerType);
+            ret.pressed[key.index] = RWInput.ResolveButtonDown(RWInput.ConvertGamepadKeyCode(key.gamepad[player]), plr, controller, controllerType);
         }
         return ret;
     }
@@ -79,8 +79,8 @@ public sealed class CustomInput : IEquatable<CustomInput>
     readonly bool[] pressed;
 
     public bool this[PlayerKeybind key] {
-        get => pressed[key.id];
-        set => pressed[key.id] = value;
+        get => pressed[key.index];
+        set => pressed[key.index] = value;
     }
 
     public void UpdateAll(Func<PlayerKeybind, bool> set)

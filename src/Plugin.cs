@@ -3,7 +3,6 @@ using Menu;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security.Permissions;
@@ -33,147 +32,35 @@ sealed class Plugin : BaseUnityPlugin
 
     internal static readonly ConditionalWeakTable<Player, PlayerData> players = new();
 
-    public static string ButtonText(int player, KeyCode keyCode, out Color? color)
-    {
-        color = null;
-        var text = keyCode.ToString();
-        if (text.Length > 14 && text.Substring(0, 14) == "JoystickButton" && int.TryParse(text.Substring(14, text.Length - 14), out int btn)) {
-            return ControllerButtonName(player, btn, out color);
-        }
-        if (text.Length > 15 && text.Substring(0, 8) == "Joystick" && int.TryParse(text.Substring(15, text.Length - 15), out int btn2)) {
-            return ControllerButtonName(player, btn2, out color);
-        }
-        if (KeyboardButtonName(keyCode) is string name) {
-            return name;
-        }
-        return text;
-    }
-    static string ControllerButtonName(int player, int joystickButton, out Color? color)
-    {
-        // Thank fuck for the internet honestly
-        var rw = RWCustom.Custom.rainWorld;
-        var controller = RWInput.PlayerRecentController(player, rw);
-        var ty = RWInput.PlayerControllerType(player, controller, rw);
-        if (ty == Options.ControlSetup.Preset.None) {
-            ty = rw.options.controls[player].IdentifyGamepadPreset();
-        }
-        if (ty == Options.ControlSetup.Preset.XBox) {
-            color = joystickButton switch {
-                0 => new Color32(60, 219, 78, 255),
-                1 => new Color32(208, 66, 66, 255),
-                2 => new Color32(64, 204, 208, 255),
-                3 => new Color32(236, 219, 51, 255),
-                _ => null
-            };
-            return joystickButton switch {
-                0 => "A", 1 => "B", 2 => "X", 3 => "Y",
-                4 => "LB", 5 => "RB", 6 => "Menu", 7 => "View",
-                8 => "LSB", 9 => "RSB", 12 => "XBox", _ => $"Button {joystickButton}"
-            };
-        }
-        else if (ty == Options.ControlSetup.Preset.PS4DualShock || ty == Options.ControlSetup.Preset.PS5DualSense) {
-            color = joystickButton switch {
-                0 => new Color32(155, 173, 228, 255),
-                1 => new Color32(240, 110, 108, 255),
-                2 => new Color32(213, 145, 189, 255),
-                3 => new Color32(56, 222, 200, 255),
-                _ => null
-            };
-            return joystickButton switch {
-                0 => "X", 1 => "O", 2 => "Square", 3 => "Triangle",
-                4 => "L1", 5 => "R1", 6 => "Share", 7 => "Options",
-                8 => "LSB", 9 => "RSB", 12 => "PS", 13 => "Touchpad", _ => $"Button {joystickButton}"
-            };
-        }
-        else if (ty == Options.ControlSetup.Preset.SwitchProController) {
-            color = null;
-            return joystickButton switch {
-                0 => "B", 1 => "A", 2 => "Y", 3 => "X",
-                4 => "L", 5 => "R", 6 => "ZL", 7 => "ZR",
-                8 => "-", 9 => "+", 10 => "LSB", 11 => "RSB",
-                12 => "Home", 13 => "Capture", _ => $"Button {joystickButton}"
-            };
-        }
-        color = null;
-        Console.WriteLine(ty);
-        return $"Button #{joystickButton}";
-    }
-    static string KeyboardButtonName(KeyCode kc)
-    {
-        string ret = kc switch {
-            KeyCode.Slash => "/",
-            KeyCode.Backslash => "\\",
-            KeyCode.LeftBracket => "[",
-            KeyCode.RightBracket => "]",
-            KeyCode.Minus => "-",
-            KeyCode.Equals => "=",
-            KeyCode.Plus => "+",
-            KeyCode.BackQuote => "`",
-            KeyCode.Semicolon => ";",
-            _ => null
-        };
-        if (ret == null) {
-            if (kc.ToString().StartsWith("Left")) {
-                return "L" + kc.ToString().Substring(4);
-            }
-            if (kc.ToString().StartsWith("Right")) {
-                return "R" + kc.ToString().Substring(5);
-            }
-        }
-        return ret;
-    }
-
-    public static int KeybindsOfType(int playerNumber, KeyCode keyCode, int stopAt)
-    {
-        return AllKeybinds(playerNumber).Where(c => c == keyCode).Take(stopAt).Count();
-    }
-    public static IEnumerable<KeyCode> AllKeybinds(int playerNumber)
-    {
-        // Deliberately only process player 0's pause button
-        Options.ControlSetup vanillaPlayer0 = RWCustom.Custom.rainWorld.options.controls[0];
-        if (vanillaPlayer0.gamePad)
-            yield return vanillaPlayer0.gamePadButtons[0];
-        else
-            yield return vanillaPlayer0.keyboardKeys[0];
-
-        // Start at index 1 to ignore pause button
-        Options.ControlSetup vanilla = RWCustom.Custom.rainWorld.options.controls[playerNumber];
-        if (vanilla.gamePad) {
-            for (int i = 1; i < vanilla.gamePadButtons.Length; i++) {
-                yield return vanilla.gamePadButtons[i];
-            }
-            foreach (var keybind in PlayerKeybind.keybinds) {
-                yield return keybind.gamepad[playerNumber];
-            }
-        }
-        else {
-            for (int i = 1; i < vanilla.keyboardKeys.Length; i++) {
-                yield return vanilla.keyboardKeys[i];
-            }
-            foreach (var keybind in PlayerKeybind.keybinds) {
-                yield return keybind.keyboard[playerNumber];
-            }
-        }
-    }
+    public static new BepInEx.Logging.ManualLogSource Logger;
 
     public void OnEnable()
     {
+        Logger = base.Logger;
+
+        // Updating custom inputs (basic API yaaay)
         On.Player.Update += Player_Update;
         On.Player.checkInput += Player_checkInput;
 
+        // Input Settings screen ui
         IL.Menu.InputOptionsMenu.ctor += AddCustomButtonsIL;
         On.Menu.InputOptionsMenu.ctor += FixVanillaButtons;
         On.Menu.InputOptionsMenu.Update += InputOptionsMenu_Update;
         On.Menu.InputOptionsMenu.ApplyInputPreset += InputOptionsMenu_ApplyInputPreset;
         On.Menu.InputOptionsMenu.UpdateInfoText += InputOptionsMenu_UpdateInfoText;
 
+        // Input testing
         On.Menu.InputTesterHolder.InputTester.ctor += InputTester_ctor;
         On.Menu.InputTesterHolder.InputTester.Update += InputTester_Update;
         On.Menu.InputTesterHolder.InputTester.UpdateTestButtons += InputTester_UpdateTestButtons;
         On.Menu.InputTesterHolder.Back.Update += Back_Update;
+
+        // Saving
+        On.Options.ApplyOption += Options_ApplyOption;
+        On.Options.ToString += Options_ToString;
     }
 
-    PlayerKeybind explode = PlayerKeybind.Register("Better Input Config", "Explode", KeyCode.C, KeyCode.Joystick1Button12);
+    PlayerKeybind explode = PlayerKeybind.Register("bic:explode", "Better Input Config", "Explode", KeyCode.C, KeyCode.Joystick1Button12);
     private void Player_Update(On.Player.orig_Update orig, Player self, bool eu)
     {
         orig(self, eu);
@@ -408,7 +295,7 @@ sealed class Plugin : BaseUnityPlugin
         float y = 45;
         Array.Resize(ref self.testButtons, i + PlayerKeybind.keybinds.Count);
         foreach (var keybind in PlayerKeybind.keybinds) {
-            self.subObjects.Add(self.testButtons[i] = new(menu, self, new Vector2(x, y), null, 0, menu.Translate(keybind.Name), -1 - keybind.id, playerIndex));
+            self.subObjects.Add(self.testButtons[i] = new(menu, self, new Vector2(x, y), null, 0, menu.Translate(keybind.Name), -1 - keybind.index, playerIndex));
             if (y <= -45) {
                 y = 45;
                 x += 280;
@@ -438,7 +325,7 @@ sealed class Plugin : BaseUnityPlugin
                     ? setup.gamePad ? PlayerKeybind.keybinds[keybindIdx].gamepad[btn.playerIndex] : PlayerKeybind.keybinds[keybindIdx].keyboard[btn.playerIndex]
                     : setup.gamePad ? setup.gamePadButtons[btn.buttonIndex] : setup.keyboardKeys[btn.buttonIndex];
 
-                btn.menuLabel.text = $"{btn.labelText} ( {ButtonText(self.playerIndex, keyCode, out _)} )";
+                btn.menuLabel.text = $"{btn.labelText} ( {InputExtensions.ButtonText(self.playerIndex, keyCode, out _)} )";
             }
         }
     }
@@ -448,5 +335,43 @@ sealed class Plugin : BaseUnityPlugin
         orig(self);
         if (self.holder.active)
             self.holdButton.held = RWInput.CheckPauseButton(0, self.menu.manager.rainWorld);
+    }
+
+    private bool Options_ApplyOption(On.Options.orig_ApplyOption orig, Options self, string[] split)
+    {
+        // Return TRUE if invalid or unrecognized data
+        bool unrecognized = orig(self, split);
+        if (!unrecognized) {
+            return false;
+        }
+        string key = split[0];
+        if (key == "BetterInputConfig:Keybind" && split.Length > 3) {
+            string id = split[1];
+            string[] keyboard = split[2].Split(',');
+            string[] gamepad = split[3].Split(',');
+
+            if (keyboard.Length < 4 || gamepad.Length < 4) return true;
+
+            for (int i = 0; i < 4; i++) {
+                PlayerKeybind keybind = PlayerKeybind.keybinds.FirstOrDefault(k => k.Id == id);
+                if (keybind == null) {
+                    Logger.LogWarning($"Unregistered keybind {id} in save file");
+                    return true;
+                }
+                if (Enum.TryParse(keyboard[i], out KeyCode k)) keybind.keyboard[i] = k;
+                if (Enum.TryParse(gamepad[i], out KeyCode k2)) keybind.gamepad[i] = k2;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    private string Options_ToString(On.Options.orig_ToString orig, Options self)
+    {
+        string ret = orig(self);
+        foreach (PlayerKeybind k in PlayerKeybind.keybinds) {
+            ret += $"BetterInputConfig:Keybind<optB>{k.Id}<optB>{k.keyboard[0]},{k.keyboard[1]},{k.keyboard[2]},{k.keyboard[3]}<optB>{k.gamepad[0]},{k.gamepad[1]},{k.gamepad[2]},{k.gamepad[3]}<optA>";
+        }
+        return ret;
     }
 }

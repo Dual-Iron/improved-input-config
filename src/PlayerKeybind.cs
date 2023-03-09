@@ -8,17 +8,23 @@ namespace BetterInputConfig;
 
 public sealed class PlayerKeybind
 {
-    public static PlayerKeybind Register(string mod, string name, KeyCode defaultKeyboard, KeyCode defaultGamepad)
+    public static PlayerKeybind Register(string id, string mod, string name, KeyCode defaultKeyboard, KeyCode defaultGamepad)
     {
-        if (keybinds.Any(k => k.Mod == mod && k.Name == name)) {
-            throw new ArgumentException($"An existing keybind with the same mod ({mod}) and name ({name}) has already been registered.");
+        if (id.Contains("<optA>") || id.Contains("<optB>")) {
+            throw new ArgumentException($"The id {id} is invalid.");
         }
-        keybinds.Add(new(mod, name, defaultKeyboard, defaultGamepad) { id = keybinds.Count });
+        if (keybinds.Any(k => k.Id == id)) {
+            throw new ArgumentException($"A keybind with the id {id} has already been registered.");
+        }
+        keybinds.Add(new(id, mod, name, defaultKeyboard, defaultGamepad) { index = keybinds.Count });
         return keybinds.Last();
     }
 
-    internal PlayerKeybind(string mod, string name, KeyCode keyboardDefault, KeyCode gamepadDefault)
+    public static PlayerKeybind Get(string id) => keybinds.FirstOrDefault(k => k.Id == id);
+
+    internal PlayerKeybind(string id, string mod, string name, KeyCode keyboardDefault, KeyCode gamepadDefault)
     {
+        Id = id;
         Mod = mod;
         Name = name;
         KeyboardDefault = keyboardDefault;
@@ -28,8 +34,9 @@ public sealed class PlayerKeybind
     }
 
     internal static readonly List<PlayerKeybind> keybinds = new();
-    internal int id = -1;
+    internal int index = -1;
 
+    public string Id { get; }
     public string Mod { get; }
     public string Name { get; }
     public KeyCode KeyboardDefault { get; }
@@ -116,4 +123,6 @@ public sealed class PlayerKeybind
 
         return RWInput.ResolveButtonDown(RWInput.ConvertGamepadKeyCode(gamepad[player]), plr, controller, controllerType);
     }
+
+    public override string ToString() => Id;
 }
