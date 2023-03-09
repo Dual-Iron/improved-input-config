@@ -8,7 +8,7 @@ namespace BetterInputConfig;
 
 public sealed class PlayerKeybind
 {
-    public static PlayerKeybind Register(string id, string mod, string name, KeyCode defaultKeyboard, KeyCode defaultGamepad)
+    public static PlayerKeybind Register(string id, string mod, string name, KeyCode keyboardPreset, KeyCode gamepadPreset, KeyCode xboxPreset = KeyCode.None)
     {
         if (id.Contains("<optA>") || id.Contains("<optB>")) {
             throw new ArgumentException($"The id {id} is invalid.");
@@ -16,19 +16,20 @@ public sealed class PlayerKeybind
         if (keybinds.Any(k => k.Id == id)) {
             throw new ArgumentException($"A keybind with the id {id} has already been registered.");
         }
-        keybinds.Add(new(id, mod, name, defaultKeyboard, defaultGamepad) { index = keybinds.Count });
+        keybinds.Add(new(id, mod, name, keyboardPreset, gamepadPreset, xboxPreset == KeyCode.None ? gamepadPreset : xboxPreset) { index = keybinds.Count });
         return keybinds.Last();
     }
 
     public static PlayerKeybind Get(string id) => keybinds.FirstOrDefault(k => k.Id == id);
 
-    internal PlayerKeybind(string id, string mod, string name, KeyCode keyboardDefault, KeyCode gamepadDefault)
+    internal PlayerKeybind(string id, string mod, string name, KeyCode keyboardDefault, KeyCode gamepadDefault, KeyCode xboxDefault)
     {
         Id = id;
         Mod = mod;
         Name = name;
-        KeyboardDefault = keyboardDefault;
-        GamepadDefault = gamepadDefault;
+        KeyboardPreset = keyboardDefault;
+        GamepadPreset = gamepadDefault;
+        XboxPreset = xboxDefault;
         keyboard = new[] { keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault };
         gamepad = new[] { gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault };
     }
@@ -39,8 +40,9 @@ public sealed class PlayerKeybind
     public string Id { get; }
     public string Mod { get; }
     public string Name { get; }
-    public KeyCode KeyboardDefault { get; }
-    public KeyCode GamepadDefault { get; }
+    public KeyCode KeyboardPreset { get; }
+    public KeyCode GamepadPreset { get; }
+    public KeyCode XboxPreset { get; }
 
     /// <summary>
     /// If true, using the map suppresses the keybind.

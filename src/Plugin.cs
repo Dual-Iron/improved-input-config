@@ -42,6 +42,9 @@ sealed class Plugin : BaseUnityPlugin
         On.Player.Update += Player_Update;
         On.Player.checkInput += Player_checkInput;
 
+        // Presets
+        On.Options.ControlSetup.Setup += SetPreset;
+
         // Input Settings screen ui
         IL.Menu.InputOptionsMenu.ctor += AddCustomButtonsIL;
         On.Menu.InputOptionsMenu.ctor += FixVanillaButtons;
@@ -60,7 +63,7 @@ sealed class Plugin : BaseUnityPlugin
         On.Options.ToString += Options_ToString;
     }
 
-    PlayerKeybind explode = PlayerKeybind.Register("bic:explode", "Better Input Config", "Explode", KeyCode.C, KeyCode.Joystick1Button12);
+    PlayerKeybind explode = PlayerKeybind.Register("bic:explode", "Better Input Config", "Explode", KeyCode.C, KeyCode.JoystickButton3);
     private void Player_Update(On.Player.orig_Update orig, Player self, bool eu)
     {
         orig(self, eu);
@@ -112,6 +115,27 @@ sealed class Plugin : BaseUnityPlugin
         });
 
         orig(self);
+    }
+
+    private void SetPreset(On.Options.ControlSetup.orig_Setup orig, Options.ControlSetup self, Options.ControlSetup.Preset preset)
+    {
+        orig(self, preset);
+
+        if (preset == Options.ControlSetup.Preset.KeyboardSinglePlayer) {
+            foreach (var kb in PlayerKeybind.keybinds) {
+                kb.keyboard[self.index] = kb.KeyboardPreset;
+            }
+        }
+        else if (preset == Options.ControlSetup.Preset.PS4DualShock || preset == Options.ControlSetup.Preset.PS5DualSense || preset == Options.ControlSetup.Preset.SwitchProController) {
+            foreach (var kb in PlayerKeybind.keybinds) {
+                kb.gamepad[self.index] = kb.GamepadPreset;
+            }
+        }
+        else if (preset == Options.ControlSetup.Preset.XBox) {
+            foreach (var kb in PlayerKeybind.keybinds) {
+                kb.gamepad[self.index] = kb.XboxPreset;
+            }
+        }
     }
 
     private void AddCustomButtonsIL(ILContext il)
