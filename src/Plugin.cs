@@ -33,16 +33,94 @@ sealed class Plugin : BaseUnityPlugin
 
     internal static readonly ConditionalWeakTable<Player, PlayerData> players = new();
 
-    public static string ButtonText(KeyCode keyCode)
+    public static string ButtonText(int player, KeyCode keyCode, out Color? color)
     {
-        string text = keyCode.ToString();
-        if (text.Length > 14 && text.Substring(0, 14) == "JoystickButton") {
-            return "Button " + text.Substring(14, text.Length - 14);
+        color = null;
+        var text = keyCode.ToString();
+        if (text.Length > 14 && text.Substring(0, 14) == "JoystickButton" && int.TryParse(text.Substring(14, text.Length - 14), out int btn)) {
+            return ControllerButtonName(player, btn, out color);
         }
-        if (text.Length > 15 && text.Substring(0, 8) == "Joystick") {
-            return "Button " + text.Substring(15, text.Length - 15);
+        if (text.Length > 15 && text.Substring(0, 8) == "Joystick" && int.TryParse(text.Substring(15, text.Length - 15), out int btn2)) {
+            return ControllerButtonName(player, btn2, out color);
+        }
+        if (KeyboardButtonName(keyCode) is string name) {
+            return name;
         }
         return text;
+    }
+    static string ControllerButtonName(int player, int joystickButton, out Color? color)
+    {
+        // Thank fuck for the internet honestly
+        var rw = RWCustom.Custom.rainWorld;
+        var controller = RWInput.PlayerRecentController(player, rw);
+        var ty = RWInput.PlayerControllerType(player, controller, rw);
+        if (ty == Options.ControlSetup.Preset.None) {
+            ty = rw.options.controls[player].IdentifyGamepadPreset();
+        }
+        if (ty == Options.ControlSetup.Preset.XBox) {
+            color = joystickButton switch {
+                0 => new Color32(60, 219, 78, 255),
+                1 => new Color32(208, 66, 66, 255),
+                2 => new Color32(64, 204, 208, 255),
+                3 => new Color32(236, 219, 51, 255),
+                _ => null
+            };
+            return joystickButton switch {
+                0 => "A", 1 => "B", 2 => "X", 3 => "Y",
+                4 => "LB", 5 => "RB", 6 => "Menu", 7 => "View",
+                8 => "LSB", 9 => "RSB", 12 => "XBox", _ => $"Button {joystickButton}"
+            };
+        }
+        else if (ty == Options.ControlSetup.Preset.PS4DualShock || ty == Options.ControlSetup.Preset.PS5DualSense) {
+            color = joystickButton switch {
+                0 => new Color32(155, 173, 228, 255),
+                1 => new Color32(240, 110, 108, 255),
+                2 => new Color32(213, 145, 189, 255),
+                3 => new Color32(56, 222, 200, 255),
+                _ => null
+            };
+            return joystickButton switch {
+                0 => "X", 1 => "O", 2 => "Square", 3 => "Triangle",
+                4 => "L1", 5 => "R1", 6 => "Share", 7 => "Options",
+                8 => "LSB", 9 => "RSB", 12 => "PS", 13 => "Touchpad", _ => $"Button {joystickButton}"
+            };
+        }
+        else if (ty == Options.ControlSetup.Preset.SwitchProController) {
+            color = null;
+            return joystickButton switch {
+                0 => "B", 1 => "A", 2 => "Y", 3 => "X",
+                4 => "L", 5 => "R", 6 => "ZL", 7 => "ZR",
+                8 => "-", 9 => "+", 10 => "LSB", 11 => "RSB",
+                12 => "Home", 13 => "Capture", _ => $"Button {joystickButton}"
+            };
+        }
+        color = null;
+        Console.WriteLine(ty);
+        return $"Button #{joystickButton}";
+    }
+    static string KeyboardButtonName(KeyCode kc)
+    {
+        string ret = kc switch {
+            KeyCode.Slash => "/",
+            KeyCode.Backslash => "\\",
+            KeyCode.LeftBracket => "[",
+            KeyCode.RightBracket => "]",
+            KeyCode.Minus => "-",
+            KeyCode.Equals => "=",
+            KeyCode.Plus => "+",
+            KeyCode.BackQuote => "`",
+            KeyCode.Semicolon => ";",
+            _ => null
+        };
+        if (ret == null) {
+            if (kc.ToString().StartsWith("Left")) {
+                return "L" + kc.ToString().Substring(4);
+            }
+            if (kc.ToString().StartsWith("Right")) {
+                return "R" + kc.ToString().Substring(5);
+            }
+        }
+        return ret;
     }
 
     public static int KeybindsOfType(int playerNumber, KeyCode keyCode, int stopAt)
@@ -86,6 +164,7 @@ sealed class Plugin : BaseUnityPlugin
         IL.Menu.InputOptionsMenu.ctor += AddCustomButtonsIL;
         On.Menu.InputOptionsMenu.ctor += FixVanillaButtons;
         On.Menu.InputOptionsMenu.Update += InputOptionsMenu_Update;
+        On.Menu.InputOptionsMenu.ApplyInputPreset += InputOptionsMenu_ApplyInputPreset;
         On.Menu.InputOptionsMenu.UpdateInfoText += InputOptionsMenu_UpdateInfoText;
 
         On.Menu.InputTesterHolder.InputTester.ctor += InputTester_ctor;
@@ -284,6 +363,18 @@ sealed class Plugin : BaseUnityPlugin
         }
     }
 
+    private void InputOptionsMenu_ApplyInputPreset(On.Menu.InputOptionsMenu.orig_ApplyInputPreset orig, InputOptionsMenu self, int preset)
+    {
+        orig(self, preset);
+
+        // Extra hyperspecific flashies
+        foreach (var sub in self.pages[0].subObjects) {
+            if (sub is InputSelectButton s && (!s.IndependentOfPlayer || self.CurrentControlSetup.index == 0) && (!s.MovementKey && s.Gamepad) == (preset != 1)) {
+                s.Flash();
+            }
+        }
+    }
+
     private string InputOptionsMenu_UpdateInfoText(On.Menu.InputOptionsMenu.orig_UpdateInfoText orig, InputOptionsMenu self)
     {
         return self.selectedObject is ISelectableText t ? t.Text() : orig(self);
@@ -347,7 +438,7 @@ sealed class Plugin : BaseUnityPlugin
                     ? setup.gamePad ? PlayerKeybind.keybinds[keybindIdx].gamepad[btn.playerIndex] : PlayerKeybind.keybinds[keybindIdx].keyboard[btn.playerIndex]
                     : setup.gamePad ? setup.gamePadButtons[btn.buttonIndex] : setup.keyboardKeys[btn.buttonIndex];
 
-                btn.menuLabel.text = $"{btn.labelText} ( {ButtonText(keyCode)} )";
+                btn.menuLabel.text = $"{btn.labelText} ( {ButtonText(self.playerIndex, keyCode, out _)} )";
             }
         }
     }

@@ -1,6 +1,5 @@
 ﻿using Menu;
 using RWCustom;
-using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
@@ -18,6 +17,7 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
     public readonly int keyIndex;
     public readonly PlayerKeybind keybind;
 
+    private Color? buttonColor;
     private float filled;
     private float lastFilled;
     private int blinkCounter;
@@ -27,13 +27,13 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
     private bool init;
 
     bool lastGamepad;
-    bool Gamepad => ControlSetup.gamePad;
+    public bool Gamepad => ControlSetup.gamePad;
 
     int lastPlayer;
     int Player => menu.manager.rainWorld.options.playerToSetInputFor;
 
-    bool IndependentOfPlayer => keyIndex == 0; // just pause button for now
-    bool MovementKey => keyIndex is 5 or 6 or 7 or 8;
+    public bool IndependentOfPlayer => keyIndex == 0; // just pause button for now
+    public bool MovementKey => keyIndex is 5 or 6 or 7 or 8;
 
     Options.ControlSetup ControlSetup => IndependentOfPlayer ? menu.manager.rainWorld.options.controls[0] : menu.CurrentControlSetup;
 
@@ -89,12 +89,23 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
 
         Color color = Color.Lerp(base.MyColor(timeStacker), Menu.Menu.MenuRGB(Menu.Menu.MenuColors.White), t);
 
-        if (!buttonBehav.greyedOut && !IndependentOfPlayer && (blinkCounter % 60 < 15)) {
+        if (!buttonBehav.greyedOut && !IndependentOfPlayer) {
+            bool DuplicateKeys(int player)
+            {
+                Options.ControlSetup[] controls = menu.manager.rainWorld.options.controls;
+                if (Player == player || controls[Player].gamePad != controls[player].gamePad) {
+                    return false;
+                }
+                if (controls[player].gamePad && controls[Player].gamePadNumber != controls[player].gamePadNumber) {
+                    return false;
+                }
+                return Plugin.KeybindsOfType(player, current, 1) > 0;
+            }
             // Hint at Survivor, Monk, Hunter, or Nightcat (respectively) having a duplicate key
-            if (Player != 0 && Plugin.KeybindsOfType(0, current, 1) > 0) return Color.Lerp(color, new Color(1, 1, 1), 0.5f);
-            if (Player != 1 && Plugin.KeybindsOfType(1, current, 1) > 0) return Color.Lerp(color, new Color(1, 1, 0), 0.15f);
-            if (Player != 2 && Plugin.KeybindsOfType(2, current, 1) > 0) return Color.Lerp(color, new Color(1, 0, 0), 0.12f);
-            if (Player != 3 && Plugin.KeybindsOfType(3, current, 1) > 0) return Color.Lerp(color, new Color(0, 0, .5f), 0.2f);
+            if (blinkCounter % 80 is < 20 && DuplicateKeys(0))              return Color.Lerp(color, new Color(1, 1, 1), 0.5f);
+            if (blinkCounter % 80 is >= 20 and < 40 && DuplicateKeys(1))    return Color.Lerp(color, new Color(1, 1, 0), 0.15f);
+            if (blinkCounter % 80 is >= 40 and < 60 && DuplicateKeys(2))    return Color.Lerp(color, new Color(1, 0, 0), 0.12f);
+            if (blinkCounter % 80 is >= 60 && DuplicateKeys(3))             return Color.Lerp(color, new Color(0, 0, .5f), 0.2f);
         }
 
         return color;
@@ -102,37 +113,38 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
 
     public void InputAssigned(KeyCode keyCode)
     {
-        recentlyUsedGreyedOut = true;
-        recentlyUsedFlash = 1f;
-
-        string text = keyCode.ToString();
-
-        if (text.Length > 4 && text.Substring(0, 5) == "Mouse") {
+        string keyCodeString = keyCode.ToString();
+        if (keyCodeString.Length > 4 && keyCodeString.Substring(0, 5) == "Mouse") {
             menu.PlaySound(SoundID.MENU_Error_Ping);
-            return;
         }
-
-        if ((text.Length > 7 && text.Substring(0, 8) == "Joystick") != Gamepad) {
+        else if ((keyCodeString.Length > 7 && keyCodeString.Substring(0, 8) == "Joystick") != Gamepad) {
             menu.PlaySound(SoundID.MENU_Error_Ping);
-            return;
-        }
-
-        menu.PlaySound(SoundID.MENU_Button_Successfully_Assigned);
-
-        if (keybind != null) {
-            if (Gamepad)
-                keybind.gamepad[Player] = keyCode;
-            else
-                keybind.keyboard[Player] = keyCode;
-        }
-        else if (Gamepad) {
-            ControlSetup.gamePadButtons[keyIndex] = keyCode;
         }
         else {
-            ControlSetup.keyboardKeys[keyIndex] = keyCode;
+            menu.PlaySound(SoundID.MENU_Button_Successfully_Assigned);
+
+            if (keybind != null) {
+                if (Gamepad)
+                    keybind.gamepad[Player] = keyCode;
+                else
+                    keybind.keyboard[Player] = keyCode;
+            }
+            else if (Gamepad) {
+                ControlSetup.gamePadButtons[keyIndex] = keyCode;
+            }
+            else {
+                ControlSetup.keyboardKeys[keyIndex] = keyCode;
+            }
         }
 
+        Flash();
+    }
+
+    public void Flash()
+    {
         RefreshKeyDisplay();
+        recentlyUsedGreyedOut = true;
+        recentlyUsedFlash = 1f;
     }
 
     public override void Update()
@@ -191,7 +203,9 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
         base.GrafUpdate(timeStacker);
 
         float a = currentKey.label.alpha;
-        currentKey.label.color = MyColor(timeStacker);
+        currentKey.label.color = currentKey.label.text != "?" && buttonColor.HasValue
+            ? Color.Lerp(MyColor(timeStacker), buttonColor.Value, 0.5f)
+            : MyColor(timeStacker);
         currentKey.label.alpha = a;
 
         circle.x = DrawX(timeStacker) + size.x / 2f;
@@ -218,7 +232,7 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
     {
         recentlyUsedFlash = Mathf.Max(recentlyUsedFlash, 0.65f);
 
-        string text = ButtonText();
+        string text = Plugin.ButtonText(Player, CurrentlyDisplayed(), out buttonColor);
         if (text.EndsWith("Arrow")) {
             currentKey.label.alpha = 0;
             arrow.alpha = 1;
@@ -234,11 +248,6 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
             currentKey.label.alpha = 1;
             currentKey.text = text;
         }
-    }
-
-    public string ButtonText()
-    {
-        return Plugin.ButtonText(CurrentlyDisplayed());
     }
 
     public override void Clicked()
