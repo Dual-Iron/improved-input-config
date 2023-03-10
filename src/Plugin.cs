@@ -26,8 +26,8 @@ sealed class Plugin : BaseUnityPlugin
             for (int i = 0; i < input.Length; i++) rawInput[i] = new();
         }
 
-        public readonly CustomInput[] input = new CustomInput[InputExtensions.HistoryLength];
-        public readonly CustomInput[] rawInput = new CustomInput[InputExtensions.HistoryLength];
+        public readonly CustomInput[] input = new CustomInput[CustomInputExt.HistoryLength];
+        public readonly CustomInput[] rawInput = new CustomInput[CustomInputExt.HistoryLength];
     }
 
     internal static readonly ConditionalWeakTable<Player, PlayerData> players = new();
@@ -339,7 +339,7 @@ sealed class Plugin : BaseUnityPlugin
                     ? setup.gamePad ? PlayerKeybind.keybinds[keybindIdx].gamepad[btn.playerIndex] : PlayerKeybind.keybinds[keybindIdx].keyboard[btn.playerIndex]
                     : setup.gamePad ? setup.gamePadButtons[btn.buttonIndex] : setup.keyboardKeys[btn.buttonIndex];
 
-                btn.menuLabel.text = $"{btn.labelText} ( {InputExtensions.ButtonText(self.playerIndex, keyCode, out _)} )";
+                btn.menuLabel.text = $"{btn.labelText} ( {CustomInputExt.ButtonText(self.playerIndex, keyCode, out _)} )";
             }
         }
     }

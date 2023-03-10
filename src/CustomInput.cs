@@ -6,8 +6,12 @@ using UnityEngine;
 
 namespace BetterInputConfig;
 
+/// <summary>
+/// One tick of input for a given player.
+/// </summary>
 public sealed class CustomInput : IEquatable<CustomInput>
 {
+    /// <summary>Gets all modded input for the given <paramref name="player"/> at this time.</summary>
     public static CustomInput GetRawInput(int player)
     {
         // More or less copypasted from RWInput.PlayerInputPC
@@ -78,18 +82,27 @@ public sealed class CustomInput : IEquatable<CustomInput>
 
     readonly bool[] pressed;
 
+    /// <summary>
+    /// Gets or sets whether <paramref name="key"/> is active.
+    /// </summary>
+    /// <returns>True if the key is active.</returns>
     public bool this[PlayerKeybind key] {
         get => pressed[key.index];
         set => pressed[key.index] = value;
     }
 
-    public void UpdateAll(Func<PlayerKeybind, bool> set)
+    /// <summary>
+    /// Gets or sets whether any key is active by applying the <paramref name="update"/> function to all of them.
+    /// </summary>
+    /// <remarks>This is primarily useful if you want to conditionally enable or disable all inputs, like in vanilla when the player is using their map.</remarks>
+    public void UpdateAll(Func<PlayerKeybind, bool> update)
     {
         for (int i = 0; i < pressed.Length; i++) {
-            pressed[i] = set(PlayerKeybind.keybinds[i]);
+            pressed[i] = update(PlayerKeybind.keybinds[i]);
         }
     }
 
+    /// <summary>Deeply copies <see langword="this"/>.</summary>
     public CustomInput Clone()
     {
         CustomInput ret = new();
@@ -97,26 +110,31 @@ public sealed class CustomInput : IEquatable<CustomInput>
         return ret;
     }
 
+    /// <inheritdoc/>
     public override bool Equals(object obj)
     {
         return Equals(obj as CustomInput);
     }
 
+    /// <inheritdoc/>
     public bool Equals(CustomInput other)
     {
         return other is not null && pressed.SequenceEqual(other.pressed);
     }
 
+    /// <inheritdoc/>
     public override int GetHashCode()
     {
         return 377040109 + EqualityComparer<bool[]>.Default.GetHashCode(pressed);
     }
 
+    /// <inheritdoc/>
     public static bool operator ==(CustomInput left, CustomInput right)
     {
         return left is null && right is null || left?.Equals(right) == true;
     }
 
+    /// <inheritdoc/>
     public static bool operator !=(CustomInput left, CustomInput right)
     {
         return !(left == right);

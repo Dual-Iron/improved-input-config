@@ -27,7 +27,7 @@ sealed class InputSelectButton : SimpleButton, ISelectableText
     private bool init;
 
     private Options.ControlSetup.Preset lastControllerType = Options.ControlSetup.Preset.None;
-    Options.ControlSetup.Preset ControllerType => InputExtensions.GetControllerType(Player);
+    Options.ControlSetup.Preset ControllerType => CustomInputExt.GetControllerType(Player);
 
     bool lastGamepad;
     public bool Gamepad => ControlSetup.gamePad;
@@ -83,7 +83,7 @@ sealed class InputSelectButton : SimpleButton, ISelectableText
         KeyCode current = CurrentlyDisplayed();
 
         // Blink red if conflicting keys on current character
-        if (current != KeyCode.None && (blinkCounter % 20 < 10) && InputExtensions.KeybindsOfType(Player, current, stopAt: 2) > 1) {
+        if (current != KeyCode.None && (blinkCounter % 20 < 10) && CustomInputExt.KeybindsOfType(Player, current, stopAt: 2) > 1) {
             return Color.red;
         }
 
@@ -101,7 +101,7 @@ sealed class InputSelectButton : SimpleButton, ISelectableText
                 if (controls[player].gamePad && controls[Player].gamePadNumber != controls[player].gamePadNumber) {
                     return false;
                 }
-                return InputExtensions.KeybindsOfType(player, current, 1) > 0;
+                return CustomInputExt.KeybindsOfType(player, current, 1) > 0;
             }
             // Hint at Survivor, Monk, Hunter, or Nightcat (respectively) having a duplicate key
             if (blinkCounter % 80 is < 20 && DuplicateKeys(0))              return Color.Lerp(color, new Color(1, 1, 1), 0.5f);
@@ -250,7 +250,7 @@ sealed class InputSelectButton : SimpleButton, ISelectableText
     {
         recentlyUsedFlash = Mathf.Max(recentlyUsedFlash, 0.65f);
 
-        string text = InputExtensions.ButtonText(Player, CurrentlyDisplayed(), out buttonColor);
+        string text = CustomInputExt.ButtonText(Player, CurrentlyDisplayed(), out buttonColor);
         if (text.EndsWith("Arrow")) {
             currentKey.label.alpha = 0;
             arrow.alpha = 1;
