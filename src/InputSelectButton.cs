@@ -3,7 +3,7 @@ using RWCustom;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
-namespace BetterInputConfig;
+namespace ImprovedInput;
 
 sealed class InputSelectButton : SimpleButton, ISelectableText
 {
@@ -278,7 +278,7 @@ sealed class InputSelectButton : SimpleButton, ISelectableText
         menu.PlaySound(SoundID.MENU_Button_Standard_Button_Pressed);
     }
 
-    public string Text()
+    public string HoverText()
     {
         if (recentlyUsedGreyedOut < 1 && IndependentOfPlayer && menu.CurrentControlSetup.index != 0) {
             return menu.Translate("Only available for player 1");

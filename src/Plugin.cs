@@ -13,9 +13,9 @@ using UnityEngine;
 [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
 #pragma warning restore CS0618
 
-namespace BetterInputConfig;
+namespace ImprovedInput;
 
-[BepInPlugin("com.dual.better-input-config", "Better Input Config", "1.0.0")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.0.0")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
@@ -277,7 +277,7 @@ sealed class Plugin : BaseUnityPlugin
 
     private string InputOptionsMenu_UpdateInfoText(On.Menu.InputOptionsMenu.orig_UpdateInfoText orig, InputOptionsMenu self)
     {
-        return self.selectedObject is ISelectableText t ? t.Text() : orig(self);
+        return self.selectedObject is InputSelectButton t ? t.HoverText() : orig(self);
     }
 
     private void InputTester_ctor(On.Menu.InputTesterHolder.InputTester.orig_ctor orig, InputTesterHolder.InputTester self, Menu.Menu menu, MenuObject owner, int playerIndex)

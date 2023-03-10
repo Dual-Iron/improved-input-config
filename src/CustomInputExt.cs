@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace BetterInputConfig;
+namespace ImprovedInput;
 
 /// <summary>
 /// Extends the functionality of the vanilla input system.

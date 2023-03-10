@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace BetterInputConfig;
+namespace ImprovedInput;
 
 public static partial class CustomInputExt
 {
