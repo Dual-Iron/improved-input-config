@@ -27,7 +27,7 @@ sealed class InputSelectButton : SimpleButton, ISelectableText
     private bool init;
 
     private Options.ControlSetup.Preset lastControllerType = Options.ControlSetup.Preset.None;
-    Options.ControlSetup.Preset ControllerType => RWInput.PlayerControllerType(Player, RWInput.PlayerRecentController(Player, menu.manager.rainWorld), menu.manager.rainWorld);
+    Options.ControlSetup.Preset ControllerType => InputExtensions.GetControllerType(Player);
 
     bool lastGamepad;
     public bool Gamepad => ControlSetup.gamePad;
@@ -198,7 +198,7 @@ sealed class InputSelectButton : SimpleButton, ISelectableText
         }
 
         if (!MovementKey && lastGamepad != Gamepad
-            || Gamepad && lastControllerType != ControllerType
+            || !MovementKey && Gamepad && lastControllerType != ControllerType
             || !IndependentOfPlayer && lastPlayer != Player && !(MovementKey && Gamepad)) {
             RefreshKeyDisplay();
         }

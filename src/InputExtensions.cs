@@ -68,9 +68,8 @@ public static class InputExtensions
     {
         // Thank the internet honestly. It's not like I knew these mappings before googling them
         // Gets whatever controller `player` is using and displays the button name for that controller
-        var rw = RWCustom.Custom.rainWorld;
-        var controller = RWInput.PlayerRecentController(player, rw);
-        var ty = RWInput.PlayerControllerType(player, controller, rw);
+        Options.ControlSetup.Preset ty = GetControllerType(player);
+
         if (ty == Options.ControlSetup.Preset.XBox) {
             color = joystickButton switch {
                 0 => new Color32(60, 219, 78, 255),
@@ -139,12 +138,33 @@ public static class InputExtensions
             };
         }
         color = null;
-        if (ty != Options.ControlSetup.Preset.None) {
-            Plugin.Logger.LogWarning($"Unrecognized controller type {ty}");
-            return $"Button {joystickButton}";
+        if (ty == Options.ControlSetup.Preset.None) {
+            return "< N / A >";
         }
-        return "< N / A >";
+        Plugin.Logger.LogWarning($"Unrecognized controller type {ty}");
+        return $"Button {joystickButton}";
     }
+    internal static Options.ControlSetup.Preset GetControllerType(int player)
+    {
+        // Beg the game to tell us what controller is being used
+        IList<Joystick> j = ReInput.controllers.Joysticks;
+        int i = RWCustom.Custom.rainWorld.options.controls[player].gamePadNumber;
+        if (i > 0) i--; // account for "any controller" being 0
+        if (i < 0 || i >= j.Count) {
+            return Options.ControlSetup.Preset.None;
+        }
+        else if (RWInput.IsXboxControllerType(j[i].name, j[i].hardwareIdentifier)) {
+            return Options.ControlSetup.Preset.XBox;
+        }
+        else if (RWInput.IsSwitchProControllerType(j[i].name, j[i].hardwareIdentifier)) {
+            return Options.ControlSetup.Preset.SwitchProController;
+        }
+        else if (RWInput.IsPlaystationControllerType(j[i].name, j[i].hardwareIdentifier)) {
+            return Options.ControlSetup.Preset.PS4DualShock;
+        }
+        return RWInput.PlayerControllerType(player, RWInput.PlayerRecentController(player, RWCustom.Custom.rainWorld), RWCustom.Custom.rainWorld);
+    }
+
     static string KeyboardButtonName(KeyCode kc)
     {
         string ret = kc switch {

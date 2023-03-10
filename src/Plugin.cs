@@ -39,7 +39,6 @@ sealed class Plugin : BaseUnityPlugin
         Logger = base.Logger;
 
         // Updating custom inputs (basic API yaaay)
-        On.Player.Update += Player_Update;
         On.Player.checkInput += Player_checkInput;
 
         // Presets
@@ -61,16 +60,6 @@ sealed class Plugin : BaseUnityPlugin
         // Saving
         On.Options.ApplyOption += Options_ApplyOption;
         On.Options.ToString += Options_ToString;
-    }
-
-    PlayerKeybind explode = PlayerKeybind.Register("bic:explode", "Better Input Config", "Explode", KeyCode.C, KeyCode.JoystickButton3);
-    private void Player_Update(On.Player.orig_Update orig, Player self, bool eu)
-    {
-        orig(self, eu);
-
-        if (self.InputHistory().All(c => c[explode])) {
-            self.PyroDeath();
-        }
     }
 
     private void Player_checkInput(On.Player.orig_checkInput orig, Player self)
