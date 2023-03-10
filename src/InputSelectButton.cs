@@ -286,6 +286,10 @@ sealed class InputSelectButton : SimpleButton, ISelectableText
         if (recentlyUsedGreyedOut < 1 && MovementKey && Gamepad) {
             return menu.Translate("Only available for keyboard");
         }
-        return Regex.Replace(menu.Translate("Bind <X> button"), "<X>", $"< {keybindLabel.text} >") + (keybind != null ? $" ({keybind.Mod})" : "");
+        if (currentKey.text == "< N / A >") {
+            return menu.Translate("Connect a controller to bind this button");
+        }
+        string mod = keybind != null ? $"({keybind.Mod}) " : "";
+        return mod + Regex.Replace(menu.Translate("Bind <X> button"), "<X>", $"< {keybindLabel.text} >");
     }
 }

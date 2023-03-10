@@ -26,8 +26,8 @@ sealed class Plugin : BaseUnityPlugin
             for (int i = 0; i < input.Length; i++) rawInput[i] = new();
         }
 
-        public readonly CustomInput[] input = new CustomInput[10];
-        public readonly CustomInput[] rawInput = new CustomInput[10];
+        public readonly CustomInput[] input = new CustomInput[InputExtensions.HistoryLength];
+        public readonly CustomInput[] rawInput = new CustomInput[InputExtensions.HistoryLength];
     }
 
     internal static readonly ConditionalWeakTable<Player, PlayerData> players = new();
@@ -51,7 +51,7 @@ sealed class Plugin : BaseUnityPlugin
         On.Menu.InputOptionsMenu.Update += InputOptionsMenu_Update;
         On.Menu.InputOptionsMenu.ApplyInputPreset += InputOptionsMenu_ApplyInputPreset;
         On.Menu.InputOptionsMenu.UpdateInfoText += InputOptionsMenu_UpdateInfoText;
-
+        
         // Input testing
         On.Menu.InputTesterHolder.InputTester.ctor += InputTester_ctor;
         On.Menu.InputTesterHolder.InputTester.Update += InputTester_Update;
@@ -150,16 +150,16 @@ sealed class Plugin : BaseUnityPlugin
     private void AddCustomButtons(InputOptionsMenu self)
     {
         int columns = 1 + Mathf.CeilToInt(PlayerKeybind.keybinds.Count / 10f); // 10 per row
-        if (columns > 5) {
-            throw new InvalidOperationException("How are there possibly more than 40 modded keybinds at one time?");
+        if (columns > 4) {
+            throw new InvalidOperationException("How are there possibly more than 30 modded keybinds at one time?");
         }
 
         var s = self.pages[0].subObjects;
-        var c = columns > 2; // compact mode
+        var c = columns > 1; // compact mode
         var columnWidth = c ? 115 : 200;
         var o = columns == 1
             ? new Vector2(960, 642)
-            : new Vector2(c ? 1136 : 1066, 642);
+            : new Vector2(columns > 2 ? 1136 : 1024, 642);
         var y = 0f;
 
         foreach (var keybind in PlayerKeybind.keybinds) {
@@ -319,7 +319,8 @@ sealed class Plugin : BaseUnityPlugin
         float y = 45;
         Array.Resize(ref self.testButtons, i + PlayerKeybind.keybinds.Count);
         foreach (var keybind in PlayerKeybind.keybinds) {
-            self.subObjects.Add(self.testButtons[i] = new(menu, self, new Vector2(x, y), null, 0, menu.Translate(keybind.Name), -1 - keybind.index, playerIndex));
+            self.subObjects.Add(self.testButtons[i++] = new(menu, self, new Vector2(x, y), null, 0, menu.Translate(keybind.Name), -1 - keybind.index, playerIndex));
+            y -= 30;
             if (y <= -45) {
                 y = 45;
                 x += 280;

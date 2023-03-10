@@ -7,6 +7,17 @@ namespace BetterInputConfig;
 
 public static class InputExtensions
 {
+    static int historyLength = 10;
+
+    /// <summary>
+    /// Determines how many ticks of history are stored for use in methods like <see cref="InputHistory(Player)"/>.
+    /// </summary>
+    /// <remarks>This value starts at 10 and can only be increased.</remarks>
+    public static int HistoryLength {
+        get => historyLength;
+        set => historyLength = Mathf.Max(historyLength, value);
+    }
+
     public static bool IsPressed(this Player p, PlayerKeybind key)
     {
         return p.Input()[key];
@@ -132,7 +143,7 @@ public static class InputExtensions
             Plugin.Logger.LogWarning($"Unrecognized controller type {ty}");
             return $"Button {joystickButton}";
         }
-        return "< No Controller >";
+        return "< N / A >";
     }
     static string KeyboardButtonName(KeyCode kc)
     {
