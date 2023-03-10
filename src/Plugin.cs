@@ -145,7 +145,7 @@ sealed class Plugin : BaseUnityPlugin
 
         var s = self.pages[0].subObjects;
         var c = columns > 1; // compact mode
-        var columnWidth = c ? 115 : 200;
+        var columnWidth = c ? 120 : 200;
         var o = columns == 1
             ? new Vector2(960, 642)
             : new Vector2(columns > 2 ? 1136 : 1024, 642);

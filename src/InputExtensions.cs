@@ -179,6 +179,9 @@ public static class InputExtensions
             KeyCode.Plus => "+",
             KeyCode.BackQuote => "`",
             KeyCode.Semicolon => ";",
+            KeyCode.Exclaim => "!",
+            KeyCode.Question=> "?",
+            KeyCode.Dollar => "$",
             _ => null
         };
         if (ret == null) {
