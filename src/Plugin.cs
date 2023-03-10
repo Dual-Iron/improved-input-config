@@ -221,11 +221,11 @@ sealed class Plugin : BaseUnityPlugin
         int found = 0;
         foreach (CheckBox checkBox in self.pages[0].subObjects.OfType<CheckBox>()) {
             if (checkBox.IDString == "XINV") {
-                checkBox.pos = new Vector2(632, 154);
+                checkBox.pos = new Vector2(450, 50);
                 found++;
             }
             else if (checkBox.IDString == "YINV") {
-                checkBox.pos = new Vector2(632, 184);
+                checkBox.pos = new Vector2(450, 80);
                 found++;
             }
             if (found == 2) break;
