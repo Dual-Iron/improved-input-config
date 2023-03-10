@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-sealed class InputSelectButton : SimpleButton, ISelectableText
+sealed class InputSelectButton : SimpleButton
 {
     private readonly MenuLabel keybindLabel;
     private readonly MenuLabel currentKey;
