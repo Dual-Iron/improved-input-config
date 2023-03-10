@@ -249,12 +249,12 @@ sealed class Plugin : BaseUnityPlugin
 
         orig(self);
 
-        if (self.forbiddenInputButton is not IInputButton button) {
+        if (self.forbiddenInputButton is not InputSelectButton button) {
             return;
         }
 
         self.freezeMenuFunctionsCounter++;
-        self.selectedObject = button as MenuObject;
+        self.selectedObject = button;
 
         if (self.lastAnyKeyDown || !self.anyKeyDown) {
             return;

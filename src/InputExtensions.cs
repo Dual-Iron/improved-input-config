@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Rewired;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -55,19 +56,10 @@ public static class InputExtensions
     static string ControllerButtonName(int player, int joystickButton, out Color? color)
     {
         // Thank the internet honestly. It's not like I knew these mappings before googling them
+        // Gets whatever controller `player` is using and displays the button name for that controller
         var rw = RWCustom.Custom.rainWorld;
         var controller = RWInput.PlayerRecentController(player, rw);
         var ty = RWInput.PlayerControllerType(player, controller, rw);
-        if (ty == Options.ControlSetup.Preset.None) {
-            bool all = rw.options.allGamePads;
-            if (!all)
-                rw.options.ConvertFromSpecificGamepadToAll(); // Fix Joystick1Button1 silliness
-
-            ty = rw.options.controls[player].IdentifyGamepadPreset(); // Unfix it just-in-case
-
-            if (!all)
-                rw.options.ConvertFromAllGamepadsToSpecific();
-        }
         if (ty == Options.ControlSetup.Preset.XBox) {
             color = joystickButton switch {
                 0 => new Color32(60, 219, 78, 255),
@@ -136,12 +128,17 @@ public static class InputExtensions
             };
         }
         color = null;
-        Plugin.Logger.LogWarning($"Unrecognized controller type {ty}");
-        return $"Button {joystickButton}";
+        if (ty != Options.ControlSetup.Preset.None) {
+            Plugin.Logger.LogWarning($"Unrecognized controller type {ty}");
+            return $"Button {joystickButton}";
+        }
+        return "< No Controller >";
     }
     static string KeyboardButtonName(KeyCode kc)
     {
         string ret = kc switch {
+            KeyCode.Period => ".",
+            KeyCode.Comma => ",",
             KeyCode.Slash => "/",
             KeyCode.Backslash => "\\",
             KeyCode.LeftBracket => "[",

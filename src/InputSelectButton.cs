@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace BetterInputConfig;
 
-sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
+sealed class InputSelectButton : SimpleButton, ISelectableText
 {
     private readonly MenuLabel keybindLabel;
     private readonly MenuLabel currentKey;
@@ -21,10 +21,13 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
     private float filled;
     private float lastFilled;
     private int blinkCounter;
-    private bool recentlyUsedGreyedOut;
+    private int recentlyUsedGreyedOut;
     private float recentlyUsedFlash;
     private float lastRecentlyUsedFlash;
     private bool init;
+
+    private Options.ControlSetup.Preset lastControllerType = Options.ControlSetup.Preset.None;
+    Options.ControlSetup.Preset ControllerType => RWInput.PlayerControllerType(Player, RWInput.PlayerRecentController(Player, menu.manager.rainWorld), menu.manager.rainWorld);
 
     bool lastGamepad;
     public bool Gamepad => ControlSetup.gamePad;
@@ -80,8 +83,7 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
         KeyCode current = CurrentlyDisplayed();
 
         // Blink red if conflicting keys on current character
-        int currentUses = InputExtensions.KeybindsOfType(Player, current, stopAt: 2);
-        if ((blinkCounter % 20 < 10) && currentUses > 1) {
+        if (current != KeyCode.None && (blinkCounter % 20 < 10) && InputExtensions.KeybindsOfType(Player, current, stopAt: 2) > 1) {
             return Color.red;
         }
 
@@ -89,7 +91,7 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
 
         Color color = Color.Lerp(base.MyColor(timeStacker), Menu.Menu.MenuRGB(Menu.Menu.MenuColors.White), t);
 
-        if (!buttonBehav.greyedOut && !IndependentOfPlayer) {
+        if (current != KeyCode.None && !buttonBehav.greyedOut && !IndependentOfPlayer) {
             bool DuplicateKeys(int player)
             {
                 Options.ControlSetup[] controls = menu.manager.rainWorld.options.controls;
@@ -103,8 +105,8 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
             }
             // Hint at Survivor, Monk, Hunter, or Nightcat (respectively) having a duplicate key
             if (blinkCounter % 80 is < 20 && DuplicateKeys(0))              return Color.Lerp(color, new Color(1, 1, 1), 0.5f);
-            if (blinkCounter % 80 is >= 20 and < 40 && DuplicateKeys(1))    return Color.Lerp(color, new Color(1, 1, 0), 0.15f);
-            if (blinkCounter % 80 is >= 40 and < 60 && DuplicateKeys(2))    return Color.Lerp(color, new Color(1, 0, 0), 0.12f);
+            if (blinkCounter % 80 is >= 20 and < 40 && DuplicateKeys(1))    return Color.Lerp(color, new Color(1, 1, 0), 0.2f);
+            if (blinkCounter % 80 is >= 40 and < 60 && DuplicateKeys(2))    return Color.Lerp(color, new Color(1, 0, 0), 0.15f);
             if (blinkCounter % 80 is >= 60 && DuplicateKeys(3))             return Color.Lerp(color, new Color(0, 0, .5f), 0.2f);
         }
 
@@ -121,7 +123,14 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
             menu.PlaySound(SoundID.MENU_Error_Ping);
         }
         else {
-            menu.PlaySound(SoundID.MENU_Button_Successfully_Assigned);
+            if (keyCode == KeyCode.Escape && keyIndex != 0) {
+                menu.PlaySound(SoundID.MENU_Checkbox_Uncheck);
+
+                keyCode = KeyCode.None;
+            }
+            else {
+                menu.PlaySound(SoundID.MENU_Button_Successfully_Assigned);
+            }
 
             if (keybind != null) {
                 if (Gamepad)
@@ -143,7 +152,7 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
     public void Flash()
     {
         RefreshKeyDisplay();
-        recentlyUsedGreyedOut = true;
+        recentlyUsedGreyedOut = 60;
         recentlyUsedFlash = 1f;
     }
 
@@ -172,12 +181,12 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
             filled = Custom.LerpAndTick(filled, 0f, 0.05f, 0.05f);
         }
 
-        if (recentlyUsedGreyedOut) {
+        if (recentlyUsedGreyedOut --> 0) {
             if (Selected) {
                 buttonBehav.greyedOut = true;
             }
-            else if (menu.selectedObject != null) {
-                recentlyUsedGreyedOut = false;
+            if (recentlyUsedGreyedOut == 0 || menu.selectedObject != null && menu.selectedObject != this) {
+                recentlyUsedGreyedOut = 0;
                 buttonBehav.greyedOut = false;
             }
         }
@@ -188,10 +197,13 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
             buttonBehav.greyedOut = Gamepad;
         }
 
-        if (!MovementKey && lastGamepad != Gamepad || !IndependentOfPlayer && lastPlayer != Player && !(MovementKey && Gamepad)) {
+        if (!MovementKey && lastGamepad != Gamepad
+            || Gamepad && lastControllerType != ControllerType
+            || !IndependentOfPlayer && lastPlayer != Player && !(MovementKey && Gamepad)) {
             RefreshKeyDisplay();
         }
 
+        lastControllerType = ControllerType;
         lastPlayer = Player;
         lastGamepad = Gamepad;
         lastRecentlyUsedFlash = recentlyUsedFlash;
@@ -203,9 +215,15 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
         base.GrafUpdate(timeStacker);
 
         float a = currentKey.label.alpha;
-        currentKey.label.color = currentKey.label.text != "?" && buttonColor.HasValue
-            ? Color.Lerp(MyColor(timeStacker), buttonColor.Value, 0.5f)
-            : MyColor(timeStacker);
+        if (currentKey.label.text != "?" && buttonColor.HasValue) {
+            currentKey.label.color = Color.Lerp(MyColor(timeStacker), buttonColor.Value, 0.5f);
+        }
+        else if (currentKey.label.text == "None") {
+            currentKey.label.color = MyColor(timeStacker) * 0.65f;
+        }
+        else {
+            currentKey.label.color = MyColor(timeStacker);
+        }
         currentKey.label.alpha = a;
 
         circle.x = DrawX(timeStacker) + size.x / 2f;
@@ -262,10 +280,10 @@ sealed class InputSelectButton : SimpleButton, IInputButton, ISelectableText
 
     public string Text()
     {
-        if (!recentlyUsedGreyedOut && IndependentOfPlayer && menu.CurrentControlSetup.index != 0) {
+        if (recentlyUsedGreyedOut < 1 && IndependentOfPlayer && menu.CurrentControlSetup.index != 0) {
             return menu.Translate("Only available for player 1");
         }
-        if (!recentlyUsedGreyedOut && MovementKey && Gamepad) {
+        if (recentlyUsedGreyedOut < 1 && MovementKey && Gamepad) {
             return menu.Translate("Only available for keyboard");
         }
         return Regex.Replace(menu.Translate("Bind <X> button"), "<X>", $"< {keybindLabel.text} >") + (keybind != null ? $" ({keybind.Mod})" : "");
