@@ -83,6 +83,11 @@ public sealed class CustomInput : IEquatable<CustomInput>
     readonly bool[] pressed;
 
     /// <summary>
+    /// Gets if any key is pressed.
+    /// </summary>
+    public bool AnyPressed => pressed.Any(b => b);
+
+    /// <summary>
     /// Gets or sets whether <paramref name="key"/> is active.
     /// </summary>
     /// <returns>True if the key is active.</returns>
@@ -92,13 +97,13 @@ public sealed class CustomInput : IEquatable<CustomInput>
     }
 
     /// <summary>
-    /// Gets or sets whether any key is active by applying the <paramref name="update"/> function to all of them.
+    /// Gets or sets whether any key is active by applying the <paramref name="apply"/> function to all of them.
     /// </summary>
     /// <remarks>This is primarily useful if you want to conditionally enable or disable all inputs, like in vanilla when the player is using their map.</remarks>
-    public void UpdateAll(Func<PlayerKeybind, bool> update)
+    public void Apply(Func<PlayerKeybind, bool> apply)
     {
         for (int i = 0; i < pressed.Length; i++) {
-            pressed[i] = update(PlayerKeybind.keybinds[i]);
+            pressed[i] = apply(PlayerKeybind.keybinds[i]);
         }
     }
 

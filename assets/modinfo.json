@@ -1,7 +1,7 @@
 ﻿{
   "id": "improved-input-config",
   "name": "Improved Input Config",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "authors": "Dual",
   "description": "Doctors up the Input Settings menu and allows mods to add their own keybinds easily.<LINE><LINE>Code at github.com/Dual-Iron/improved-input-config",
   "requirements": [],

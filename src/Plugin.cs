@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.0.0")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.0.1")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
@@ -39,7 +39,8 @@ sealed class Plugin : BaseUnityPlugin
         Logger = base.Logger;
 
         // Updating custom inputs (basic API yaaay)
-        On.Player.checkInput += Player_checkInput;
+        On.Player.checkInput += UpdateInput;
+        On.Player.UpdateMSC += UpdateNoInputCounter;
 
         // Presets
         On.Options.ControlSetup.Setup += SetPreset;
@@ -62,7 +63,7 @@ sealed class Plugin : BaseUnityPlugin
         On.Options.ToString += Options_ToString;
     }
 
-    private void Player_checkInput(On.Player.orig_checkInput orig, Player self)
+    private void UpdateInput(On.Player.orig_checkInput orig, Player self)
     {
         PlayerData data = players.GetValue(self, _ => new());
 
@@ -94,7 +95,7 @@ sealed class Plugin : BaseUnityPlugin
         }
 
         // Suppress input if we're pressing MAP or currently sleeping.
-        data.input[0].UpdateAll(key => {
+        data.input[0].Apply(key => {
             bool mapSuppressed = self.standStillOnMapButton && self.input[0].mp && (!ModManager.CoopAvailable || !self.jollyButtonDown);
             bool sleepSuppressed = self.Sleeping;
             if (key.MapSuppressed && mapSuppressed || key.SleepSuppressed && self.Sleeping) {
@@ -103,6 +104,15 @@ sealed class Plugin : BaseUnityPlugin
             return data.input[0][key];
         });
 
+        orig(self);
+    }
+
+    private void UpdateNoInputCounter(On.Player.orig_UpdateMSC orig, Player self)
+    {
+        PlayerData data = players.GetValue(self, _ => new());
+        if (data.input[0].AnyPressed) {
+            self.touchedNoInputCounter = 0;
+        }
         orig(self);
     }
 
