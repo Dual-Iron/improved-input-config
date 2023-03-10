@@ -3,8 +3,13 @@
   "name": "Better Input Config",
   "version": "1.0.0",
   "authors": "Dual",
-  "description": "Doctors up the Input Settings menus to include modded keybinds and a cleaner interface.",
+  "description": "Doctors up the Input Settings menu and allows mods to add their own keybinds easily.",
   "requirements": [],
   "requirements_names": [],
+  "tags": [
+    "Accessibility",
+    "Dependency",
+    "Tools"
+  ],
   "checksum_override_version": false
 }
