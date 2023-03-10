@@ -359,7 +359,7 @@ sealed class Plugin : BaseUnityPlugin
             return false;
         }
         string key = split[0];
-        if (key == "BetterInputConfig:Keybind" && split.Length > 3) {
+        if (key == "iic:keybind" && split.Length > 3) {
             string id = split[1];
             string[] keyboard = split[2].Split(',');
             string[] gamepad = split[3].Split(',');
@@ -384,7 +384,7 @@ sealed class Plugin : BaseUnityPlugin
     {
         string ret = orig(self);
         foreach (PlayerKeybind k in PlayerKeybind.keybinds) {
-            ret += $"BetterInputConfig:Keybind<optB>{k.Id}<optB>{k.keyboard[0]},{k.keyboard[1]},{k.keyboard[2]},{k.keyboard[3]}<optB>{k.gamepad[0]},{k.gamepad[1]},{k.gamepad[2]},{k.gamepad[3]}<optA>";
+            ret += $"iic:keybind<optB>{k.Id}<optB>{k.keyboard[0]},{k.keyboard[1]},{k.keyboard[2]},{k.keyboard[3]}<optB>{k.gamepad[0]},{k.gamepad[1]},{k.gamepad[2]},{k.gamepad[3]}<optA>";
         }
         return ret;
     }
