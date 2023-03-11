@@ -18,11 +18,26 @@ public sealed class PlayerKeybind
     /// <param name="mod">The display name of the mod that registered this keybind.</param>
     /// <param name="name">A short name to show in the Input Settings screen.</param>
     /// <param name="keyboardPreset">The default value for keyboards.</param>
+    /// <param name="gamepadPreset">The default value for controllers.</param>
+    /// <returns>A new <see cref="PlayerKeybind"/> to be used like <c>player.JustPressed(keybind)</c>.</returns>
+    /// <exception cref="ArgumentException">The <paramref name="id"/> is invalid or already taken.</exception>
+    public static PlayerKeybind Register(string id, string mod, string name, KeyCode keyboardPreset, KeyCode gamepadPreset)
+    {
+        return Register(id, mod, name, keyboardPreset, gamepadPreset, gamepadPreset);
+    }
+
+    /// <summary>
+    /// Registers a new keybind.
+    /// </summary>
+    /// <param name="id">The unique ID for the keybind.</param>
+    /// <param name="mod">The display name of the mod that registered this keybind.</param>
+    /// <param name="name">A short name to show in the Input Settings screen.</param>
+    /// <param name="keyboardPreset">The default value for keyboards.</param>
     /// <param name="gamepadPreset">The default value for PlayStation, Switch Pro, and other controllers.</param>
     /// <param name="xboxPreset">The default value for Xbox controllers.</param>
     /// <returns>A new <see cref="PlayerKeybind"/> to be used like <c>player.JustPressed(keybind)</c>.</returns>
     /// <exception cref="ArgumentException">The <paramref name="id"/> is invalid or already taken.</exception>
-    public static PlayerKeybind Register(string id, string mod, string name, KeyCode keyboardPreset, KeyCode gamepadPreset, KeyCode xboxPreset = KeyCode.None)
+    public static PlayerKeybind Register(string id, string mod, string name, KeyCode keyboardPreset, KeyCode gamepadPreset, KeyCode xboxPreset)
     {
         if (id.Contains("<optA>") || id.Contains("<optB>")) {
             throw new ArgumentException($"The id {id} is invalid.");
@@ -80,6 +95,9 @@ public sealed class PlayerKeybind
     internal readonly KeyCode[] keyboard;
     internal readonly KeyCode[] gamepad;
 
+    /// <summary>True if the binding for <paramref name="playerNumber"/> is not set.</summary>
+    public bool Unbound(int playerNumber) => CurrentBinding(playerNumber) == KeyCode.None;
+
     /// <summary>The current keycode configured for the given <paramref name="playerNumber"/> on keyboard.</summary>
     public KeyCode Keyboard(int playerNumber)
     {
@@ -89,13 +107,25 @@ public sealed class PlayerKeybind
         return keyboard[playerNumber];
     }
 
-    /// <summary>The current keycode configured for the given <paramref name="playerNumber"/> on a controller or gamepad.</summary>
+    /// <summary>The current keycode configured for the given <paramref name="playerNumber"/> on a controller.</summary>
     public KeyCode Gamepad(int playerNumber)
     {
         if (playerNumber is < 0 or > 3) {
             throw new ArgumentOutOfRangeException(nameof(playerNumber));
         }
         return gamepad[playerNumber];
+    }
+
+    /// <summary>The current recognized keycode for the given <paramref name="playerNumber"/>.</summary>
+    public KeyCode CurrentBinding(int playerNumber)
+    {
+        if (playerNumber is < 0 or > 3) {
+            throw new ArgumentOutOfRangeException(nameof(playerNumber));
+        }
+        if (RWCustom.Custom.rainWorld.options.controls[playerNumber].gamePad) {
+            return gamepad[playerNumber];
+        }
+        return keyboard[playerNumber];
     }
 
     /// <summary>Checks if the key is currently being pressed by <paramref name="playerNumber"/>.</summary>

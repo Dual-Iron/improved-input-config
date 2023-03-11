@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.0.1")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.0.2")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
