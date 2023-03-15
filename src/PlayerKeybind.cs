@@ -40,12 +40,16 @@ public sealed class PlayerKeybind
     public static PlayerKeybind Register(string id, string mod, string name, KeyCode keyboardPreset, KeyCode gamepadPreset, KeyCode xboxPreset)
     {
         if (id.Contains("<optA>") || id.Contains("<optB>")) {
-            throw new ArgumentException($"The id {id} is invalid.");
+            Debug.Log($"[ERROR] The keybind id {id} is invalid.");
+            throw new ArgumentException($"The keybind id {id} is invalid.");
         }
         if (keybinds.Any(k => k.Id == id)) {
+            Debug.Log($"[ERROR] A keybind with the id {id} has already been registered.");
             throw new ArgumentException($"A keybind with the id {id} has already been registered.");
         }
-        keybinds.Add(new(id, mod, name, keyboardPreset, gamepadPreset, xboxPreset == KeyCode.None ? gamepadPreset : xboxPreset) { index = keybinds.Count });
+        keybinds.Add(new(id, mod, name, keyboardPreset, gamepadPreset, xboxPreset == KeyCode.None ? gamepadPreset : xboxPreset) {
+            index = keybinds.Count
+        });
         return keybinds.Last();
     }
 

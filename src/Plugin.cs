@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.0.2")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.0.3")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
@@ -65,6 +65,8 @@ sealed class Plugin : BaseUnityPlugin
 
     private void UpdateInput(On.Player.orig_checkInput orig, Player self)
     {
+        CustomInputExt.historyLocked = true;
+
         PlayerData data = players.GetValue(self, _ => new());
 
         // Age input.

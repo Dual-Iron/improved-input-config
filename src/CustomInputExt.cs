@@ -7,15 +7,21 @@ namespace ImprovedInput;
 /// </summary>
 public static partial class CustomInputExt
 {
-    static int historyLength = 10;
+    internal static int historyLength = 10;
+    internal static bool historyLocked = false;
 
     /// <summary>
     /// Determines how many ticks of input are stored for <see cref="InputHistory(Player)"/> and <see cref="RawInputHistory(Player)"/>.
     /// </summary>
-    /// <remarks>This value starts at 10 and can only be increased. Avoid setting this to anything above 40 or so.</remarks>
+    /// <remarks>This value starts at 10 and can only be increased. Set it when your mod is being enabled. Avoid setting this to anything extremely high.</remarks>
     public static int HistoryLength {
         get => historyLength;
-        set => historyLength = Mathf.Max(historyLength, value);
+        set {
+            if (historyLocked) {
+                throw new System.InvalidOperationException("History length cannot be modified after the game has started.");
+            }
+            historyLength = Mathf.Max(historyLength, value);
+        }
     }
 
     /// <summary>

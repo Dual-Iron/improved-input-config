@@ -80,7 +80,15 @@ public sealed class CustomInput : IEquatable<CustomInput>
         pressed = new bool[PlayerKeybind.keybinds.Count];
     }
 
-    readonly bool[] pressed;
+    bool[] pressed;
+    bool[] Pressed {
+        get {
+            // Updates automatically as keybinds are registered
+            if (pressed.Length < PlayerKeybind.keybinds.Count)
+                Array.Resize(ref pressed, PlayerKeybind.keybinds.Count);
+            return pressed;
+        }
+    }
 
     /// <summary>
     /// Gets if any key is pressed.
@@ -92,8 +100,8 @@ public sealed class CustomInput : IEquatable<CustomInput>
     /// </summary>
     /// <returns>True if the key is active.</returns>
     public bool this[PlayerKeybind key] {
-        get => pressed[key.index];
-        set => pressed[key.index] = value;
+        get => Pressed[key.index];
+        set => Pressed[key.index] = value;
     }
 
     /// <summary>
@@ -103,7 +111,7 @@ public sealed class CustomInput : IEquatable<CustomInput>
     public void Apply(Func<PlayerKeybind, bool> apply)
     {
         for (int i = 0; i < pressed.Length; i++) {
-            pressed[i] = apply(PlayerKeybind.keybinds[i]);
+            Pressed[i] = apply(PlayerKeybind.keybinds[i]);
         }
     }
 
