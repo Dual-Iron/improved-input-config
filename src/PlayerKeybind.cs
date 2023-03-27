@@ -126,6 +126,8 @@ public sealed class PlayerKeybind
     internal readonly KeyCode[] keyboard;
     internal readonly KeyCode[] gamepad;
 
+    /// <summary>True if the binding for <paramref name="playerNumber"/> is set.</summary>
+    public bool Bound(int playerNumber) => CurrentBinding(playerNumber) != KeyCode.None;
     /// <summary>True if the binding for <paramref name="playerNumber"/> is not set.</summary>
     public bool Unbound(int playerNumber) => CurrentBinding(playerNumber) == KeyCode.None;
 

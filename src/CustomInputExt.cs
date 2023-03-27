@@ -47,9 +47,9 @@ public static partial class CustomInputExt
     }
 
     /// <summary>
-    /// Checks if <paramref name="key"/> is being pressed by <paramref name="player"/>.
+    /// Checks if <paramref name="key"/> is bound for <paramref name="player"/>.
     /// </summary>
-    /// <returns>True if the key is down.</returns>
+    /// <returns>True if the key is bound.</returns>
     public static bool IsKeyBound(this Player player, PlayerKeybind key)
     {
         if (player.AI != null || player.playerState.playerNumber is < 0 or > 3) {
@@ -57,6 +57,11 @@ public static partial class CustomInputExt
         }
         return !key.Unbound(player.playerState.playerNumber);
     }
+    /// <summary>
+    /// Checks if <paramref name="key"/> is unbound for <paramref name="player"/>.
+    /// </summary>
+    /// <returns>True if the key is unbound.</returns>
+    public static bool IsKeyUnbound(this Player player, PlayerKeybind key) => !player.IsKeyBound(key);
 
     /// <summary>
     /// Checks if <paramref name="key"/> is being pressed by <paramref name="player"/>.
