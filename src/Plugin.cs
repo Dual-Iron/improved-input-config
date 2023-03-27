@@ -424,35 +424,30 @@ sealed class Plugin : BaseUnityPlugin
     {
         orig(self, menu, owner, playerIndex);
 
-        // Remove "pause" tester
-        self.RemoveSubObject(self.testButtons[7]);
-        self.testButtons[7].RemoveSprites();
+        // Remove buttons. Leave the first four ( the arrow keys ).
+        foreach (var testButton in self.testButtons) {
+            if (testButton.buttonIndex is 5 or 6 or 7 or 8) continue;
 
-        // Rename "Pick up / Eat" to "Grab"
-        self.testButtons[4].labelText = menu.Translate("Grab");
-        self.testButtons[4].menuLabel.text = menu.Translate("Grab");
+            self.RemoveSubObject(testButton);
+            testButton.RemoveSprites();
+        }
 
-        // Make room for map button below grab, jump, and throw
-        self.testButtons[4].pos.y += 15;
-        self.testButtons[5].pos.y += 15;
-        self.testButtons[6].pos.y += 15;
+        // Added keybinds
+        float x = 120 + (menu.CurrLang == InGameTranslator.LanguageID.French || menu.CurrLang == InGameTranslator.LanguageID.German ? 30 : 0);
+        int row = 0;
+        int btn = 4;
+        Array.Resize(ref self.testButtons, 4 - 5 + PlayerKeybind.keybinds.Count);
+        foreach (PlayerKeybind keybind in PlayerKeybind.keybinds) {
+            if (keybind.index is 0 or 5 or 6 or 7 or 8) {
+                continue;
+            }
 
-        // Move map there
-        self.testButtons[8].pos.x = self.testButtons[6].pos.x;
-        self.testButtons[8].pos.y = self.testButtons[6].pos.y - 30;
+            self.subObjects.Add(self.testButtons[btn++] = new(menu, self, new Vector2(x, 45 - row * 30), null, 0, menu.Translate(keybind.Name), keybind.index, playerIndex));
 
-        // Added modded keybinds
-        // Keybind ID is stored as `btn.index = -1 - ID`, so retrieve actual ID by using `ID = -1 - btn.index`
-        int i = self.testButtons.Length;
-        float x = 280 + (menu.CurrLang == InGameTranslator.LanguageID.French || menu.CurrLang == InGameTranslator.LanguageID.German ? 30 : 0);
-        float y = 45;
-        Array.Resize(ref self.testButtons, i + PlayerKeybind.keybinds.Count);
-        foreach (var keybind in PlayerKeybind.keybinds) {
-            self.subObjects.Add(self.testButtons[i++] = new(menu, self, new Vector2(x, y), null, 0, menu.Translate(keybind.Name), keybind.index, playerIndex));
-            y -= 30;
-            if (y <= -45) {
-                y = 45;
-                x += 280;
+            row += 1;
+            if (row > 3) {
+                row = 0;
+                x += 200;
             }
         }
     }
@@ -462,8 +457,8 @@ sealed class Plugin : BaseUnityPlugin
         orig(self);
 
         foreach (var btn in self.testButtons) {
-            if (btn.buttonIndex < 0) {
-                btn.pressed = PlayerKeybind.keybinds[-1 - btn.buttonIndex].CheckRawPressed(self.playerIndex);
+            if (btn.buttonIndex is not 5 and not 6 and not 7 and not 8) {
+                btn.pressed = PlayerKeybind.keybinds[btn.buttonIndex].CheckRawPressed(self.playerIndex);
             }
             btn.playerAssignedToAnything = self.playerAssignedToAnything;
         }
@@ -474,7 +469,7 @@ sealed class Plugin : BaseUnityPlugin
         foreach (var btn in self.testButtons) {
             if (btn.menuLabel != null) {
                 Options.ControlSetup setup = self.menu.manager.rainWorld.options.controls[btn.playerIndex];
-                KeyCode keyCode = setup.gamePad ? PlayerKeybind.keybinds[btn.buttonIndex].gamepad[btn.playerIndex] : PlayerKeybind.keybinds[btn.buttonIndex].keyboard[btn.playerIndex];
+                KeyCode keyCode = setup.UsingGamepad() ? PlayerKeybind.keybinds[btn.buttonIndex].gamepad[btn.playerIndex] : PlayerKeybind.keybinds[btn.buttonIndex].keyboard[btn.playerIndex];
                 btn.menuLabel.text = $"{btn.labelText} ( {CustomInputExt.ButtonText(self.playerIndex, keyCode, out _)} )";
             }
         }
@@ -502,12 +497,13 @@ sealed class Plugin : BaseUnityPlugin
 
             if (keyboard.Length < 4 || gamepad.Length < 4) return true;
 
+            PlayerKeybind keybind = PlayerKeybind.keybinds.FirstOrDefault(k => k.Id == id);
+            if (keybind == null) {
+                Logger.LogWarning($"Unregistered keybind {id} in save file");
+                return true;
+            }
+
             for (int i = 0; i < 4; i++) {
-                PlayerKeybind keybind = PlayerKeybind.keybinds.FirstOrDefault(k => k.Id == id);
-                if (keybind == null) {
-                    Logger.LogWarning($"Unregistered keybind {id} in save file");
-                    return true;
-                }
                 if (Enum.TryParse(keyboard[i], out KeyCode k)) keybind.keyboard[i] = k;
                 if (Enum.TryParse(gamepad[i], out KeyCode k2)) keybind.gamepad[i] = k2;
             }
