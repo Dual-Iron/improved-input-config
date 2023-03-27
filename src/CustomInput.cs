@@ -44,23 +44,8 @@ public sealed class CustomInput : IEquatable<CustomInput>
             return ret;
         }
 
-        PlayerHandler plrHandler = rw.GetPlayerHandler(playerNumber);
-        if (plrHandler == null) {
-            return ret;
-        }
-
-        Profiles.Profile profile = plrHandler.profile;
-        if (profile == null) {
-            return ret;
-        }
-
-        Rewired.Player plr = UserInput.GetRewiredPlayer(profile, plrHandler.playerIndex);
-        if (plr == null) {
-            return ret;
-        }
-
         foreach (var key in PlayerKeybind.keybinds) {
-            ret.pressed[key.index] = CustomInputExt.ResolveButtonDown(CustomInputExt.ConvertGamepadKeyCode(key.gamepad[playerNumber]), plr, controller, controllerType);
+            ret.pressed[key.index] = CustomInputExt.ResolveButtonDown(key.gamepad[playerNumber], controller, controllerType);
         }
 
         return ret;

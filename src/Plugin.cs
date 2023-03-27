@@ -8,6 +8,7 @@ using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security.Permissions;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 // Allows access to private members
@@ -113,8 +114,7 @@ sealed class Plugin : BaseUnityPlugin
         }
         KeyCode keyCode = CustomInputExt.ActionToKeyCode(player.id, actionId, true);
         Controller ctrl = EnsureController(setup);
-        string buttonName = CustomInputExt.ConvertGamepadKeyCode(keyCode);
-        return CustomInputExt.ResolveButtonDown(buttonName, player, ctrl, ty);
+        return CustomInputExt.ResolveButtonDown(keyCode, ctrl, ty);
     };
 
     private static readonly Func<Func<Rewired.Player, int, float>, Rewired.Player, int, float> getAxisRaw = (orig, player, actionId) => {
@@ -322,7 +322,18 @@ sealed class Plugin : BaseUnityPlugin
             }
         }
 
+        // Prevent self.gamepadDefaultsButton from being selected
+        self.xInvCheck.nextSelectable[1] = null;
+
+        // Move keyboard button up
         self.deviceButtons[1].pos.y += 90;
+        self.deviceButtons[1].lastPos.y += 90;
+
+        // Update player arrow positions after moving keyboard button
+        foreach (InputOptionsMenu.PlayerButton plrButton in self.playerButtons) {
+            plrButton.pointPos = plrButton.IdealPointHeight();
+            plrButton.lastPointPos = plrButton.pointPos;
+        }
 
         self.keyBoardKeysButtons = new InputOptionsMenu.InputSelectButton[0];
         self.gamePadButtonButtons = new InputOptionsMenu.InputSelectButton[0];
@@ -354,8 +365,10 @@ sealed class Plugin : BaseUnityPlugin
     {
         orig(self);
 
+        Controller ctrl = EnsureController(self.CurrentControlSetup);
+
         lastAnyKey = anyKey;
-        anyKey = Input.anyKey;
+        anyKey = Input.anyKey || (ctrl?.GetAnyButton() ?? false);
 
         if (self.settingInput == null || self.selectedObject is not InputSelectButton button) {
             return;
@@ -367,18 +380,22 @@ sealed class Plugin : BaseUnityPlugin
             return;
         }
 
-        foreach (object obj in Enum.GetValues(typeof(KeyCode))) {
-            if (obj is KeyCode keyCode && Input.GetKey(keyCode)) {
+        foreach (KeyCode keyCode in Enum.GetValues(typeof(KeyCode)).OfType<KeyCode>()) {
+            if (Input.GetKey(keyCode) || CustomInputExt.ResolveButtonDown(keyCode, ctrl, self.CurrentControlSetup.GetActivePreset())) {
                 button.InputAssigned(keyCode);
+
                 self.settingInput = null;
-                break;
+
+                if (self.mouseModeBeforeAssigningInput) {
+                    self.forceMouseMode = 10;
+                    self.mouseModeBeforeAssigningInput = false;
+                }
+
+                return;
             }
         }
 
-        if (self.mouseModeBeforeAssigningInput) {
-            self.forceMouseMode = 10;
-            self.mouseModeBeforeAssigningInput = false;
-        }
+        Logger.LogDebug("No known way to track input!");
     }
 
     private void FixSelection(On.Menu.InputOptionsMenu.orig_SetCurrentlySelectedOfSeries orig, InputOptionsMenu self, string series, int to)
@@ -394,6 +411,9 @@ sealed class Plugin : BaseUnityPlugin
 
     private string InputOptionsMenu_UpdateInfoText(On.Menu.InputOptionsMenu.orig_UpdateInfoText orig, InputOptionsMenu self)
     {
+        if (self.selectedObject is SimpleButton button && button.signalText == "BIC CUSTOM PRESET") {
+            return Regex.Replace(self.Translate("Assign player <X> to the default controls"), "<X>", (self.manager.rainWorld.options.playerToSetInputFor + 1).ToString());
+        }
         return self.selectedObject is InputSelectButton t ? t.HoverText() : orig(self);
     }
 

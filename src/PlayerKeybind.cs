@@ -175,22 +175,7 @@ public sealed class PlayerKeybind
             return Input.GetKey(keyboard[playerNumber]);
         }
 
-        PlayerHandler plrHandler = rw.GetPlayerHandler(playerNumber);
-        if (plrHandler == null) {
-            return false;
-        }
-
-        Profiles.Profile profile = plrHandler.profile;
-        if (profile == null) {
-            return false;
-        }
-
-        Rewired.Player plr = UserInput.GetRewiredPlayer(profile, plrHandler.playerIndex);
-        if (plr == null) {
-            return false;
-        }
-
-        return CustomInputExt.ResolveButtonDown(CustomInputExt.ConvertGamepadKeyCode(gamepad[playerNumber]), plr, controller, controllerType);
+        return CustomInputExt.ResolveButtonDown(gamepad[playerNumber], controller, controllerType);
     }
 
     /// <summary>

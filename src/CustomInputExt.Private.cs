@@ -199,15 +199,7 @@ public static partial class CustomInputExt
         }
     }
 
-    internal static string ConvertGamepadKeyCode(KeyCode kc)
-    {
-        string text = kc.ToString();
-        if (text.Contains("Button")) {
-            return text.Substring(text.IndexOf("Button"));
-        }
-        return "Button0";
-    }
-    internal static bool ResolveButtonDown(string buttonName, Rewired.Player player, Controller controller, Options.ControlSetup.Preset preset)
+    internal static bool ResolveButtonDown(KeyCode kc, Controller controller, Options.ControlSetup.Preset preset)
     {
         // This commented code fails with the warning "The Action {buttonName} does not exist. You can create Actions in the editor."
         // We cannot create actions in the editor. We are modders.
@@ -217,49 +209,60 @@ public static partial class CustomInputExt
         //     return player.GetButton(buttonName);
         // }
 
-        int num = 0;
-        if (buttonName.Contains("Button")) {
-            int num2 = buttonName.IndexOf("Button") + "Button".Length;
-            num = int.Parse(buttonName.Substring(num2, buttonName.Length - num2), NumberStyles.Any, CultureInfo.InvariantCulture);
+        if (controller == null || kc == KeyCode.None) {
+            return false;
         }
+
+        string buttonName = kc.ToString();
+        if (buttonName.Contains("Button")) {
+            buttonName = buttonName.Substring(buttonName.IndexOf("Button") + "Button".Length);
+        }
+        else {
+            return false;
+        }
+
+        int btn = int.Parse(buttonName, NumberStyles.Any, CultureInfo.InvariantCulture);
         if (preset == Options.ControlSetup.Preset.XBox) {
-            if (num == 8) {
-                num = 9;
+            if (btn == 8) {
+                btn = 9;
             }
-            else if (num == 9) {
-                num = 10;
+            else if (btn == 9) {
+                btn = 10;
             }
         }
         else if (preset == Options.ControlSetup.Preset.PS4DualShock || preset == Options.ControlSetup.Preset.PS5DualSense) {
-            if (num == 0) {
-                num = 2;
+            if (btn == 0) {
+                btn = 2;
             }
-            else if (num == 1) {
-                num = 0;
+            else if (btn == 1) {
+                btn = 0;
             }
-            else if (num == 2) {
-                num = 1;
+            else if (btn == 2) {
+                btn = 1;
             }
-            else if (num == 8) {
-                num = 6;
+            else if (btn == 8) {
+                btn = 6;
             }
-            else if (num == 9) {
-                num = 7;
+            else if (btn == 9) {
+                btn = 7;
             }
-            else if (num == 13) {
-                num = 9;
+            else if (btn == 13) {
+                btn = 9;
             }
-            else if (num == 12) {
-                num = 8;
+            else if (btn == 12) {
+                btn = 8;
             }
         }
         else if (preset != Options.ControlSetup.Preset.SwitchProController) {
             return false;
         }
-        return controller.GetButton(num);
+        return controller.GetButton(btn);
     }
     internal static float ResolveAxis(bool horizontal, Rewired.Player player, Controller controller, Options.ControlSetup.Preset preset)
     {
+        if (controller == null) {
+            return 0;
+        }
         if (controller.Templates.Count > 0) {
             return player.GetAxisRaw(horizontal ? "MoveHorizontal" : "MoveVertical");
         }
