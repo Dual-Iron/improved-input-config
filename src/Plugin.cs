@@ -18,7 +18,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.1.0")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.2.0")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
@@ -199,18 +199,20 @@ sealed class Plugin : BaseUnityPlugin
             var playerNumber = self.CurrentControlSetup.index;
             var preset = self.manager.rainWorld.options.controls[playerNumber].GetActivePreset();
 
+            var keybinds = PlayerKeybind.GuiKeybinds();
+
             if (preset == Options.ControlSetup.Preset.KeyboardSinglePlayer) {
-                foreach (var kb in PlayerKeybind.keybinds) {
+                foreach (var kb in keybinds) {
                     kb.keyboard[playerNumber] = kb.KeyboardPreset;
                 }
             }
             else if (preset == Options.ControlSetup.Preset.PS4DualShock || preset == Options.ControlSetup.Preset.PS5DualSense || preset == Options.ControlSetup.Preset.SwitchProController) {
-                foreach (var kb in PlayerKeybind.keybinds) {
+                foreach (var kb in keybinds) {
                     kb.gamepad[playerNumber] = kb.GamepadPreset;
                 }
             }
             else if (preset == Options.ControlSetup.Preset.XBox) {
-                foreach (var kb in PlayerKeybind.keybinds) {
+                foreach (var kb in keybinds) {
                     kb.gamepad[playerNumber] = kb.XboxPreset;
                 }
             }
@@ -239,8 +241,9 @@ sealed class Plugin : BaseUnityPlugin
     private void AddCustomButtons(InputOptionsMenu self)
     {
         // --- Keybind buttons ---
+        var keybinds = PlayerKeybind.GuiKeybinds();
 
-        int columns = 1 + Mathf.CeilToInt((PlayerKeybind.keybinds.Count - 9) / 10f); // 10 per row
+        int columns = 1 + Mathf.CeilToInt((keybinds.Count - 9) / 10f); // 10 per row
         if (columns > 4) {
             throw new InvalidOperationException("How are there possibly more than 30 modded keybinds at one time?");
         }
@@ -254,8 +257,8 @@ sealed class Plugin : BaseUnityPlugin
         var y = 0f;
 
         // Start at 9, after all vanilla keybinds
-        for (int i = 9; i < PlayerKeybind.keybinds.Count; i++) {
-            PlayerKeybind keybind = PlayerKeybind.keybinds[i];
+        for (int i = 9; i < keybinds.Count; i++) {
+            PlayerKeybind keybind = keybinds[i];
             s.Add(new InputSelectButton(self.pages[0], keybind, c, new Vector2(o.x, o.y - y)));
             y += 40;
             if (y >= 40 * 10) {
@@ -432,12 +435,14 @@ sealed class Plugin : BaseUnityPlugin
             testButton.RemoveSprites();
         }
 
+        var keybinds = PlayerKeybind.GuiKeybinds();
+
         // Added keybinds
         float x = 120 + (menu.CurrLang == InGameTranslator.LanguageID.French || menu.CurrLang == InGameTranslator.LanguageID.German ? 30 : 0);
         int row = 0;
         int btn = 4;
-        Array.Resize(ref self.testButtons, 4 - 5 + PlayerKeybind.keybinds.Count);
-        foreach (PlayerKeybind keybind in PlayerKeybind.keybinds) {
+        Array.Resize(ref self.testButtons, 4 - 5 + keybinds.Count);
+        foreach (PlayerKeybind keybind in keybinds) {
             if (keybind.index is 0 or 5 or 6 or 7 or 8) {
                 continue;
             }

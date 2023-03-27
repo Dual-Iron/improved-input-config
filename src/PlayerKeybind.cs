@@ -13,6 +13,13 @@ namespace ImprovedInput;
 /// </summary>
 public sealed class PlayerKeybind
 {
+    internal static List<PlayerKeybind> GuiKeybinds()
+    {
+        List<PlayerKeybind> ret = new(keybinds);
+        ret.RemoveAll(p => p.HideConfig);
+        return ret;
+    }
+
     internal static readonly List<PlayerKeybind> keybinds = new();
 
     // Don't move these. The indices matter.
@@ -111,6 +118,10 @@ public sealed class PlayerKeybind
     /// If true, sleeping suppresses the keybind.
     /// </summary>
     public bool SleepSuppressed { get; set; } = true;
+    /// <summary>
+    /// If true, the keybind will not be configurable through the Input Settings screen.
+    /// </summary>
+    public bool HideConfig { get; set; } = false;
 
     internal readonly KeyCode[] keyboard;
     internal readonly KeyCode[] gamepad;
