@@ -24,6 +24,28 @@ public static partial class CustomInputExt
         }
     }
 
+    /// <summary>Returns true if a given control setup uses a keyboard.</summary>
+    public static bool UsingKeyboard(this Options.ControlSetup setup) => UsingKeyboard(setup.index);
+    /// <summary>Returns true if a given control setup uses a gamepad.</summary>
+    public static bool UsingGamepad(this Options.ControlSetup setup) => UsingGamepad(setup.index);
+
+    /// <summary>Returns true if a given player is using a keyboard.</summary>
+    public static bool UsingKeyboard(int playerNumber)
+    {
+        if (playerNumber is < 0 or > 3) {
+            throw new System.ArgumentOutOfRangeException(nameof(playerNumber), "Player number must be 0, 1, 2, or 3.");
+        }
+        return RWCustom.Custom.rainWorld.options.controls[playerNumber].controlPreference == Options.ControlSetup.ControlToUse.KEYBOARD;
+    }
+    /// <summary>Returns true if a given player is using a gamepad.</summary>
+    public static bool UsingGamepad(int playerNumber)
+    {
+        if (playerNumber is < 0 or > 3) {
+            throw new System.ArgumentOutOfRangeException(nameof(playerNumber), "Player number must be 0, 1, 2, or 3.");
+        }
+        return RWCustom.Custom.rainWorld.options.controls[playerNumber].controlPreference == Options.ControlSetup.ControlToUse.SPECIFIC_GAMEPAD;
+    }
+
     /// <summary>
     /// Checks if <paramref name="key"/> is being pressed by <paramref name="player"/>.
     /// </summary>

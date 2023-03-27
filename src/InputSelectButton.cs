@@ -1,5 +1,6 @@
 ﻿using Menu;
 using RWCustom;
+using System;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
@@ -14,7 +15,6 @@ sealed class InputSelectButton : SimpleButton
     private readonly new InputOptionsMenu menu;
     private readonly bool compactMode;
 
-    public readonly int keyIndex;
     public readonly PlayerKeybind keybind;
 
     private Color? buttonColor;
@@ -30,31 +30,26 @@ sealed class InputSelectButton : SimpleButton
     Options.ControlSetup.Preset ControllerType => CustomInputExt.GetControllerType(Player);
 
     bool lastGamepad;
-    public bool Gamepad => ControlSetup.gamePad;
+    public bool Gamepad => CustomInputExt.UsingGamepad(ControlSetup.index);
 
     int lastPlayer;
     int Player => menu.manager.rainWorld.options.playerToSetInputFor;
 
-    public bool IndependentOfPlayer => keyIndex == 0; // just pause button for now
-    public bool MovementKey => keyIndex is 5 or 6 or 7 or 8;
+    public bool IndependentOfPlayer => keybind.index == 0; // just pause button for now
+    public bool MovementKey => keybind.index is 5 or 6 or 7 or 8;
 
     Options.ControlSetup ControlSetup => IndependentOfPlayer ? menu.manager.rainWorld.options.controls[0] : menu.CurrentControlSetup;
 
-    public InputSelectButton(MenuObject owner, PlayerKeybind keybind, bool compact, Vector2 pos) : this(owner, -1 - keybind.index, owner.menu.Translate(keybind.Name), compact, pos)
-    {
-        this.keybind = keybind;
-    }
-
-    public InputSelectButton(MenuObject owner, int index, string keybindName, bool compact, Vector2 pos) : base(owner.menu, owner, "", "", pos, new Vector2(30f, 30f))
+    public InputSelectButton(MenuObject owner, PlayerKeybind keybind, bool compact, Vector2 pos) : base(owner.menu, owner, "", "", pos, new Vector2(30f, 30f))
     {
         compactMode = compact;
-        keyIndex = index;
         menu = (InputOptionsMenu)owner.menu;
+        this.keybind = keybind;
 
         lastGamepad = Gamepad;
         lastPlayer = Player;
 
-        keybindLabel = new MenuLabel(menu, this, keybindName, new Vector2(compact ? -26 : -30, compact ? 8 : 0), size, false);
+        keybindLabel = new MenuLabel(menu, this, owner.menu.Translate(keybind.Name), new Vector2(compact ? -26 : -30, compact ? 8 : 0), size, false);
         keybindLabel.label.alignment = FLabelAlignment.Right;
         subObjects.Add(keybindLabel);
 
@@ -70,12 +65,9 @@ sealed class InputSelectButton : SimpleButton
 
     private KeyCode CurrentlyDisplayed()
     {
-        if (keybind != null) {
-            return ControlSetup.gamePad ? keybind.gamepad[ControlSetup.index] : keybind.keyboard[ControlSetup.index];
-        }
+        bool arrowKey = keybind.index is 5 or 6 or 7 or 8;
 
-        bool arrowKey = keyIndex is 5 or 6 or 7 or 8;
-        return ControlSetup.gamePad && !arrowKey ? ControlSetup.gamePadButtons[keyIndex] : ControlSetup.keyboardKeys[keyIndex];
+        return Gamepad && !arrowKey ? keybind.gamepad[ControlSetup.index] : keybind.keyboard[ControlSetup.index];
     }
 
     public override Color MyColor(float timeStacker)
@@ -95,10 +87,10 @@ sealed class InputSelectButton : SimpleButton
             bool DuplicateKeys(int player)
             {
                 Options.ControlSetup[] controls = menu.manager.rainWorld.options.controls;
-                if (Player == player || controls[Player].gamePad != controls[player].gamePad) {
+                if (Player == player || controls[Player].controlPreference != controls[player].controlPreference) {
                     return false;
                 }
-                if (controls[player].gamePad && controls[Player].gamePadNumber != controls[player].gamePadNumber) {
+                if (controls[player].UsingGamepad() && controls[Player].gamePadNumber != controls[player].gamePadNumber) {
                     return false;
                 }
                 return CustomInputExt.KeybindsOfType(player, current, 1) > 0;
@@ -123,7 +115,7 @@ sealed class InputSelectButton : SimpleButton
             menu.PlaySound(SoundID.MENU_Error_Ping);
         }
         else {
-            if (keyCode == KeyCode.Escape && keyIndex != 0) {
+            if (keyCode == KeyCode.Escape && keybind.index != 0) {
                 menu.PlaySound(SoundID.MENU_Checkbox_Uncheck);
 
                 keyCode = KeyCode.None;
@@ -132,18 +124,10 @@ sealed class InputSelectButton : SimpleButton
                 menu.PlaySound(SoundID.MENU_Button_Successfully_Assigned);
             }
 
-            if (keybind != null) {
-                if (Gamepad)
-                    keybind.gamepad[Player] = keyCode;
-                else
-                    keybind.keyboard[Player] = keyCode;
-            }
-            else if (Gamepad) {
-                ControlSetup.gamePadButtons[keyIndex] = keyCode;
-            }
-            else {
-                ControlSetup.keyboardKeys[keyIndex] = keyCode;
-            }
+            if (Gamepad)
+                keybind.gamepad[Player] = keyCode;
+            else
+                keybind.keyboard[Player] = keyCode;
         }
 
         Flash();
@@ -168,7 +152,7 @@ sealed class InputSelectButton : SimpleButton
         blinkCounter++;
         lastFilled = filled;
 
-        if (menu.forbiddenInputButton == this) {
+        if (menu.settingInput is IntVector2 value && value.y == keybind.index) {
             filled = Custom.LerpAndTick(filled, 1f, 0.05f, 0.05f);
             if (blinkCounter % 30 < 15) {
                 currentKey.text = "?";
@@ -271,10 +255,8 @@ sealed class InputSelectButton : SimpleButton
     public override void Clicked()
     {
         menu.mouseModeBeforeAssigningInput = menu.manager.menuesMouseMode;
-        if (this != menu.forbiddenInputButton) {
-            menu.selectedObject = this;
-            menu.forbiddenInputButton = this;
-        }
+        menu.selectedObject = this;
+        menu.settingInput = new(0, keybind.index);
         menu.PlaySound(SoundID.MENU_Button_Standard_Button_Pressed);
     }
 
@@ -289,7 +271,7 @@ sealed class InputSelectButton : SimpleButton
         if (currentKey.text == "< N / A >") {
             return menu.Translate("Connect a controller to bind this button");
         }
-        string mod = keybind != null ? $"({keybind.Mod}) " : "";
-        return mod + Regex.Replace(menu.Translate("Bind <X> button"), "<X>", $"< {keybindLabel.text} >");
+        string mod = keybind.Mod == "Vanilla" ? "" : $" ({keybind.Mod})";
+        return Regex.Replace(menu.Translate("Bind <X> button"), "<X>", $"< {keybindLabel.text} >") + mod;
     }
 }

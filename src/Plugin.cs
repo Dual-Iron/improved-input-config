@@ -2,6 +2,8 @@
 using Menu;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
+using MonoMod.RuntimeDetour;
+using Rewired;
 using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -15,7 +17,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.0.3")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.1.0")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
@@ -36,22 +38,28 @@ sealed class Plugin : BaseUnityPlugin
 
     public void OnEnable()
     {
+        // TODO fix bug where opening game with a controller already enabled doesn't recognize the controller
         Logger = base.Logger;
+
+        // Reverting vanilla input to 1.9.06 system
+        On.Options.ControlSetup.KeyCodeFromAction += KeyCodeFromAction;
+        new Hook(typeof(Rewired.Player).GetMethod("GetButton", new Type[] { typeof(int) }), getButton);
+        new Hook(typeof(Rewired.Player).GetMethod("GetAxisRaw", new Type[] { typeof(int) }), getAxisRaw);
 
         // Updating custom inputs (basic API yaaay)
         On.Player.checkInput += UpdateInput;
         On.Player.UpdateMSC += UpdateNoInputCounter;
 
         // Presets
-        On.Options.ControlSetup.Setup += SetPreset;
+        On.Menu.InputOptionsMenu.Singal += Presets;
 
         // Input Settings screen ui
         IL.Menu.InputOptionsMenu.ctor += AddCustomButtonsIL;
         On.Menu.InputOptionsMenu.ctor += FixVanillaButtons;
         On.Menu.InputOptionsMenu.Update += InputOptionsMenu_Update;
-        On.Menu.InputOptionsMenu.ApplyInputPreset += InputOptionsMenu_ApplyInputPreset;
+        On.Menu.InputOptionsMenu.SetCurrentlySelectedOfSeries += FixSelection;
         On.Menu.InputOptionsMenu.UpdateInfoText += InputOptionsMenu_UpdateInfoText;
-        
+
         // Input testing
         On.Menu.InputTesterHolder.InputTester.ctor += InputTester_ctor;
         On.Menu.InputTesterHolder.InputTester.Update += InputTester_Update;
@@ -62,6 +70,68 @@ sealed class Plugin : BaseUnityPlugin
         On.Options.ApplyOption += Options_ApplyOption;
         On.Options.ToString += Options_ToString;
     }
+
+    private KeyCode KeyCodeFromAction(On.Options.ControlSetup.orig_KeyCodeFromAction orig, Options.ControlSetup self, int actionID, int categoryID, bool axisPositive)
+    {
+        if (self.recentController == null || self.recentController.type != ControllerType.Keyboard) {
+            return KeyCode.None;
+        }
+
+        // See RewiredConsts.Action
+        int i = self.index;
+        if (i is < 0 or > 3) throw new InvalidOperationException("Invalid ControlSetup index " + i);
+        return actionID switch {
+            0 => PlayerKeybind.Jump.keyboard[i],
+            1 => axisPositive ? PlayerKeybind.Right.keyboard[i] : PlayerKeybind.Left.keyboard[i],
+            2 => axisPositive ? PlayerKeybind.Up.keyboard[i] : PlayerKeybind.Down.keyboard[i],
+            3 => PlayerKeybind.Grab.keyboard[i],
+            4 => PlayerKeybind.Throw.keyboard[i],
+            5 => PlayerKeybind.Pause.keyboard[i],
+            11 => PlayerKeybind.Map.keyboard[i],
+            _ => KeyCode.None,
+        };
+    }
+
+    // Cursed shit copied from 1.9.06 input code. Overwrites ReWired's Player.GetButton and Player.GetAxisRaw functions.
+
+    private static Controller EnsureController(Options.ControlSetup setup)
+    {
+        Controller ctrl = RWInput.PlayerRecentController(setup.index, RWCustom.Custom.rainWorld);
+        if (ctrl != null) {
+            return ctrl;
+        }
+        setup.UpdateControlPreference(setup.controlPreference, true);
+        return RWInput.PlayerRecentController(setup.index, RWCustom.Custom.rainWorld);
+    }
+
+    private static readonly Func<Func<Rewired.Player, int, bool>, Rewired.Player, int, bool> getButton = (orig, player, actionId) => {
+        Options.ControlSetup setup = RWCustom.Custom.rainWorld.options.controls[player.id];
+        Options.ControlSetup.Preset ty = setup.GetActivePreset();
+        bool gamePad = ty != Options.ControlSetup.Preset.KeyboardSinglePlayer && ty != Options.ControlSetup.Preset.None;
+        if (!gamePad) {
+            return Input.GetKey(CustomInputExt.ActionToKeyCode(player.id, actionId, true));
+        }
+        KeyCode keyCode = CustomInputExt.ActionToKeyCode(player.id, actionId, true);
+        Controller ctrl = EnsureController(setup);
+        string buttonName = CustomInputExt.ConvertGamepadKeyCode(keyCode);
+        return CustomInputExt.ResolveButtonDown(buttonName, player, ctrl, ty);
+    };
+
+    private static readonly Func<Func<Rewired.Player, int, float>, Rewired.Player, int, float> getAxisRaw = (orig, player, actionId) => {
+        Options.ControlSetup setup = RWCustom.Custom.rainWorld.options.controls[player.id];
+        Options.ControlSetup.Preset ty = setup.GetActivePreset();
+        bool gamePad = ty != Options.ControlSetup.Preset.KeyboardSinglePlayer && ty != Options.ControlSetup.Preset.None;
+        if (!gamePad) {
+            // Checking axis for keyboard involves just checking if right/left is pressed
+            bool neg = Input.GetKey(CustomInputExt.ActionToKeyCode(player.id, actionId, false));
+            bool pos = Input.GetKey(CustomInputExt.ActionToKeyCode(player.id, actionId, true));
+            if (neg && !pos) return -1;
+            if (pos && !neg) return 1;
+            return 0;
+        }
+        Controller ctrl = EnsureController(setup);
+        return CustomInputExt.ResolveAxis(actionId is 1 or 6, player, ctrl, ty);
+    };
 
     private void UpdateInput(On.Player.orig_checkInput orig, Player self)
     {
@@ -118,24 +188,39 @@ sealed class Plugin : BaseUnityPlugin
         orig(self);
     }
 
-    private void SetPreset(On.Options.ControlSetup.orig_Setup orig, Options.ControlSetup self, Options.ControlSetup.Preset preset)
+    private void Presets(On.Menu.InputOptionsMenu.orig_Singal orig, InputOptionsMenu self, MenuObject sender, string message)
     {
-        orig(self, preset);
+        orig(self, sender, message);
 
-        if (preset == Options.ControlSetup.Preset.KeyboardSinglePlayer) {
-            foreach (var kb in PlayerKeybind.keybinds) {
-                kb.keyboard[self.index] = kb.KeyboardPreset;
+        if (message == "BIC CUSTOM PRESET") {
+            var playerNumber = self.CurrentControlSetup.index;
+            var preset = self.manager.rainWorld.options.controls[playerNumber].GetActivePreset();
+
+            if (preset == Options.ControlSetup.Preset.KeyboardSinglePlayer) {
+                foreach (var kb in PlayerKeybind.keybinds) {
+                    kb.keyboard[playerNumber] = kb.KeyboardPreset;
+                }
             }
-        }
-        else if (preset == Options.ControlSetup.Preset.PS4DualShock || preset == Options.ControlSetup.Preset.PS5DualSense || preset == Options.ControlSetup.Preset.SwitchProController) {
-            foreach (var kb in PlayerKeybind.keybinds) {
-                kb.gamepad[self.index] = kb.GamepadPreset;
+            else if (preset == Options.ControlSetup.Preset.PS4DualShock || preset == Options.ControlSetup.Preset.PS5DualSense || preset == Options.ControlSetup.Preset.SwitchProController) {
+                foreach (var kb in PlayerKeybind.keybinds) {
+                    kb.gamepad[playerNumber] = kb.GamepadPreset;
+                }
             }
-        }
-        else if (preset == Options.ControlSetup.Preset.XBox) {
-            foreach (var kb in PlayerKeybind.keybinds) {
-                kb.gamepad[self.index] = kb.XboxPreset;
+            else if (preset == Options.ControlSetup.Preset.XBox) {
+                foreach (var kb in PlayerKeybind.keybinds) {
+                    kb.gamepad[playerNumber] = kb.XboxPreset;
+                }
             }
+
+            foreach (var sub in self.pages[0].subObjects) {
+                if (sub is InputSelectButton s
+                    && (!s.IndependentOfPlayer || self.CurrentControlSetup.index == 0)
+                    && (s.MovementKey || !s.Gamepad) == (preset == Options.ControlSetup.Preset.KeyboardSinglePlayer)) {
+                    s.Flash();
+                }
+            }
+
+            self.PlaySound(SoundID.MENU_Button_Successfully_Assigned);
         }
     }
 
@@ -150,7 +235,9 @@ sealed class Plugin : BaseUnityPlugin
 
     private void AddCustomButtons(InputOptionsMenu self)
     {
-        int columns = 1 + Mathf.CeilToInt(PlayerKeybind.keybinds.Count / 10f); // 10 per row
+        // --- Keybind buttons ---
+
+        int columns = 1 + Mathf.CeilToInt((PlayerKeybind.keybinds.Count - 9) / 10f); // 10 per row
         if (columns > 4) {
             throw new InvalidOperationException("How are there possibly more than 30 modded keybinds at one time?");
         }
@@ -163,7 +250,9 @@ sealed class Plugin : BaseUnityPlugin
             : new Vector2(columns > 2 ? 1136 : 1024, 642);
         var y = 0f;
 
-        foreach (var keybind in PlayerKeybind.keybinds) {
+        // Start at 9, after all vanilla keybinds
+        for (int i = 9; i < PlayerKeybind.keybinds.Count; i++) {
+            PlayerKeybind keybind = PlayerKeybind.keybinds[i];
             s.Add(new InputSelectButton(self.pages[0], keybind, c, new Vector2(o.x, o.y - y)));
             y += 40;
             if (y >= 40 * 10) {
@@ -188,24 +277,33 @@ sealed class Plugin : BaseUnityPlugin
 
         // Add vanilla buttons
         s.Add(GroupLabel("PLAYER ONE", o + new Vector2(15, 30)));
-        s.Add(new InputSelectButton(self.pages[0], 0, self.Translate("Pause"), c, o - new Vector2(0, y += 20)));
+        s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Pause, c, o - new Vector2(0, y += 20)));
         
         s.Add(GroupLabel("MOVEMENT", o - new Vector2(0, y += 45) + new Vector2(15, 30)));
-        s.Add(new InputSelectButton(self.pages[0], 6, self.Translate("Up"), c, o - new Vector2(0, y += 20)));
-        s.Add(new InputSelectButton(self.pages[0], 5, self.Translate("Left"), c, o - new Vector2(0, y += 40)));
-        s.Add(new InputSelectButton(self.pages[0], 8, self.Translate("Down"), c, o - new Vector2(0, y += 40)));
-        s.Add(new InputSelectButton(self.pages[0], 7, self.Translate("Right"), c, o - new Vector2(0, y += 40)));
+        s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Up, c, o - new Vector2(0, y += 20)));
+        s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Left, c, o - new Vector2(0, y += 40)));
+        s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Down, c, o - new Vector2(0, y += 40)));
+        s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Right, c, o - new Vector2(0, y += 40)));
 
         s.Add(GroupLabel("VANILLA", o - new Vector2(0, y += 45) + new Vector2(15, 30)));
-        s.Add(new InputSelectButton(self.pages[0], 2, self.Translate("Grab"), c, o - new Vector2(0, y += 20)));
-        s.Add(new InputSelectButton(self.pages[0], 3, self.Translate("Jump"), c, o - new Vector2(0, y += 40)));
-        s.Add(new InputSelectButton(self.pages[0], 4, self.Translate("Throw"), c, o - new Vector2(0, y += 40)));
-        s.Add(new InputSelectButton(self.pages[0], 1, self.Translate("Map"), c, o - new Vector2(0, y += 40)));
+        s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Grab, c, o - new Vector2(0, y += 20)));
+        s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Jump, c, o - new Vector2(0, y += 40)));
+        s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Throw, c, o - new Vector2(0, y += 40)));
+        s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Map, c, o - new Vector2(0, y += 40)));
+
+        // --- Preset button ---
+        self.pages[0].subObjects.Add(new SimpleButton(self, self.pages[0], self.Translate("PRESET"), "BIC CUSTOM PRESET", new(self.testButton.pos.x, 140), new(110, 30)));
     }
 
     private void FixVanillaButtons(On.Menu.InputOptionsMenu.orig_ctor orig, InputOptionsMenu self, ProcessManager manager)
     {
         orig(self, manager);
+
+        foreach (var setup in manager.rainWorld.options.controls) {
+            if (setup.controlPreference == Options.ControlSetup.ControlToUse.ANY) {
+                setup.UpdateControlPreference(Options.ControlSetup.ControlToUse.KEYBOARD, false);
+            }
+        }
 
         // Remove old buttons
         string keyboard = self.Translate("KEYBOARD");
@@ -214,11 +312,17 @@ sealed class Plugin : BaseUnityPlugin
         for (int i = self.pages[0].subObjects.Count - 1; i >= 0; i--) {
             MenuObject sub = self.pages[0].subObjects[i];
 
-            if (sub is InputOptionsMenu.InputSelectButton || sub is MenuLabel label && (label.text == keyboard || label.text == gamepad || self.inputLabels.Contains(label))) {
+            if (sub == self.deviceButtons[0]
+                || sub == self.keyboardDefaultsButton
+                || sub == self.gamepadDefaultsButton
+                || sub is InputOptionsMenu.InputSelectButton
+                || sub is MenuLabel label && (label.text == keyboard || label.text == gamepad || self.inputLabels.Contains(label))) {
                 self.pages[0].RemoveSubObject(sub);
                 sub.RemoveSprites();
             }
         }
+
+        self.deviceButtons[1].pos.y += 90;
 
         self.keyBoardKeysButtons = new InputOptionsMenu.InputSelectButton[0];
         self.gamePadButtonButtons = new InputOptionsMenu.InputSelectButton[0];
@@ -244,27 +348,29 @@ sealed class Plugin : BaseUnityPlugin
         }
     }
 
+    bool lastAnyKey = false;
+    bool anyKey = false;
     private void InputOptionsMenu_Update(On.Menu.InputOptionsMenu.orig_Update orig, InputOptionsMenu self)
     {
-        self.settingInput = null;
-
         orig(self);
 
-        if (self.forbiddenInputButton is not InputSelectButton button) {
+        lastAnyKey = anyKey;
+        anyKey = Input.anyKey;
+
+        if (self.settingInput == null || self.selectedObject is not InputSelectButton button) {
             return;
         }
 
         self.freezeMenuFunctionsCounter++;
-        self.selectedObject = button;
 
-        if (self.lastAnyKeyDown || !self.anyKeyDown) {
+        if (lastAnyKey || !anyKey) {
             return;
         }
 
         foreach (object obj in Enum.GetValues(typeof(KeyCode))) {
             if (obj is KeyCode keyCode && Input.GetKey(keyCode)) {
                 button.InputAssigned(keyCode);
-                self.forbiddenInputButton = null;
+                self.settingInput = null;
                 break;
             }
         }
@@ -275,15 +381,14 @@ sealed class Plugin : BaseUnityPlugin
         }
     }
 
-    private void InputOptionsMenu_ApplyInputPreset(On.Menu.InputOptionsMenu.orig_ApplyInputPreset orig, InputOptionsMenu self, int preset)
+    private void FixSelection(On.Menu.InputOptionsMenu.orig_SetCurrentlySelectedOfSeries orig, InputOptionsMenu self, string series, int to)
     {
-        orig(self, preset);
+        orig(self, series, to);
 
-        // Extra hyperspecific flashies
-        foreach (var sub in self.pages[0].subObjects) {
-            if (sub is InputSelectButton s && (!s.IndependentOfPlayer || self.CurrentControlSetup.index == 0) && (!s.MovementKey && s.Gamepad) == (preset != 1)) {
-                s.Flash();
-            }
+        if (series == "DeviceButtons" && to != 1) {
+            self.CurrentControlSetup.gamePadGuid = null;
+            self.CurrentControlSetup.gamePadNumber = to - 2;
+            self.CurrentControlSetup.UpdateControlPreference(Options.ControlSetup.ControlToUse.SPECIFIC_GAMEPAD, false);
         }
     }
 
@@ -320,7 +425,7 @@ sealed class Plugin : BaseUnityPlugin
         float y = 45;
         Array.Resize(ref self.testButtons, i + PlayerKeybind.keybinds.Count);
         foreach (var keybind in PlayerKeybind.keybinds) {
-            self.subObjects.Add(self.testButtons[i++] = new(menu, self, new Vector2(x, y), null, 0, menu.Translate(keybind.Name), -1 - keybind.index, playerIndex));
+            self.subObjects.Add(self.testButtons[i++] = new(menu, self, new Vector2(x, y), null, 0, menu.Translate(keybind.Name), keybind.index, playerIndex));
             y -= 30;
             if (y <= -45) {
                 y = 45;
@@ -345,12 +450,8 @@ sealed class Plugin : BaseUnityPlugin
     {
         foreach (var btn in self.testButtons) {
             if (btn.menuLabel != null) {
-                int keybindIdx = -1 - btn.buttonIndex;
                 Options.ControlSetup setup = self.menu.manager.rainWorld.options.controls[btn.playerIndex];
-                KeyCode keyCode = btn.buttonIndex < 0
-                    ? setup.gamePad ? PlayerKeybind.keybinds[keybindIdx].gamepad[btn.playerIndex] : PlayerKeybind.keybinds[keybindIdx].keyboard[btn.playerIndex]
-                    : setup.gamePad ? setup.gamePadButtons[btn.buttonIndex] : setup.keyboardKeys[btn.buttonIndex];
-
+                KeyCode keyCode = setup.gamePad ? PlayerKeybind.keybinds[btn.buttonIndex].gamepad[btn.playerIndex] : PlayerKeybind.keybinds[btn.buttonIndex].keyboard[btn.playerIndex];
                 btn.menuLabel.text = $"{btn.labelText} ( {CustomInputExt.ButtonText(self.playerIndex, keyCode, out _)} )";
             }
         }

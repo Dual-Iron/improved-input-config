@@ -11,20 +11,21 @@ namespace ImprovedInput;
 /// </summary>
 public sealed class CustomInput : IEquatable<CustomInput>
 {
-    /// <summary>Gets all modded input for the given <paramref name="player"/> at this time.</summary>
-    public static CustomInput GetRawInput(int player)
+    /// <summary>Gets all modded input for the given <paramref name="playerNumber"/> at this time.</summary>
+    public static CustomInput GetRawInput(int playerNumber)
     {
         // More or less copypasted from RWInput.PlayerInputPC
         // See PlayerKeybind.cs
-        if (player is < 0 or > 3) {
-            throw new ArgumentOutOfRangeException(nameof(player));
+        if (playerNumber is < 0 or > 3) {
+            throw new ArgumentOutOfRangeException(nameof(playerNumber));
         }
 
         CustomInput ret = new();
 
         var rw = RWCustom.Custom.rainWorld;
-        var controller = RWInput.PlayerRecentController(player, rw);
-        var controllerType = RWInput.PlayerControllerType(player, controller, rw);
+        var controller = RWInput.PlayerRecentController(playerNumber, rw);
+        rw.options.controls[playerNumber].UpdateActiveController(controller, false);
+        var controllerType = rw.options.controls[playerNumber].GetActivePreset();
 
         bool notMultiplayer = rw.processManager == null || !rw.processManager.IsGameInMultiplayerContext();
         if (!notMultiplayer && controllerType == Options.ControlSetup.Preset.None) {
@@ -38,12 +39,12 @@ public sealed class CustomInput : IEquatable<CustomInput>
         bool gamePad = controllerType != Options.ControlSetup.Preset.KeyboardSinglePlayer;
         if (!gamePad) {
             foreach (var key in PlayerKeybind.keybinds) {
-                ret.pressed[key.index] = Input.GetKey(key.keyboard[player]);
+                ret.pressed[key.index] = Input.GetKey(key.keyboard[playerNumber]);
             }
             return ret;
         }
 
-        PlayerHandler plrHandler = rw.GetPlayerHandler(player);
+        PlayerHandler plrHandler = rw.GetPlayerHandler(playerNumber);
         if (plrHandler == null) {
             return ret;
         }
@@ -58,20 +59,10 @@ public sealed class CustomInput : IEquatable<CustomInput>
             return ret;
         }
 
-        Options.ControlSetup.Preset preset = rw.options.controls[player].IdentifyGamepadPreset();
-
-        if (preset != Options.ControlSetup.Preset.None) {
-            if (controllerType == Options.ControlSetup.Preset.XBox && preset != Options.ControlSetup.Preset.XBox) {
-                rw.options.controls[player].Setup(Options.ControlSetup.Preset.XBox);
-            }
-            else if (controllerType != Options.ControlSetup.Preset.XBox && preset == Options.ControlSetup.Preset.XBox) {
-                rw.options.controls[player].Setup(Options.ControlSetup.Preset.PS4DualShock);
-            }
-        }
-
         foreach (var key in PlayerKeybind.keybinds) {
-            ret.pressed[key.index] = RWInput.ResolveButtonDown(RWInput.ConvertGamepadKeyCode(key.gamepad[player]), plr, controller, controllerType);
+            ret.pressed[key.index] = CustomInputExt.ResolveButtonDown(CustomInputExt.ConvertGamepadKeyCode(key.gamepad[playerNumber]), plr, controller, controllerType);
         }
+
         return ret;
     }
 

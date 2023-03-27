@@ -1,6 +1,8 @@
 ﻿using Kittehface.Framework20;
+using Rewired;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using UnityEngine;
 
@@ -11,6 +13,21 @@ namespace ImprovedInput;
 /// </summary>
 public sealed class PlayerKeybind
 {
+    internal static readonly List<PlayerKeybind> keybinds = new();
+
+    // Don't move these. The indices matter.
+    internal static readonly PlayerKeybind Pause = Register("vanilla:pause", "Vanilla", "Pause", KeyCode.Escape, KeyCode.JoystickButton9, KeyCode.JoystickButton6);
+
+    internal static readonly PlayerKeybind Map = Register("vanilla:map", "Vanilla", "Map", KeyCode.Space, KeyCode.JoystickButton5, KeyCode.JoystickButton5);
+    internal static readonly PlayerKeybind Grab = Register("vanilla:grab", "Vanilla", "Grab", KeyCode.LeftShift, KeyCode.JoystickButton0, KeyCode.JoystickButton2);
+    internal static readonly PlayerKeybind Jump = Register("vanilla:jump", "Vanilla", "Jump", KeyCode.Z, KeyCode.JoystickButton1, KeyCode.JoystickButton0);
+    internal static readonly PlayerKeybind Throw = Register("vanilla:throw", "Vanilla", "Throw", KeyCode.X, KeyCode.JoystickButton2, KeyCode.JoystickButton1);
+
+    internal static readonly PlayerKeybind Up = Register("vanilla:up", "Vanilla", "Up", KeyCode.UpArrow, KeyCode.None);
+    internal static readonly PlayerKeybind Left = Register("vanilla:left", "Vanilla", "Left", KeyCode.LeftArrow, KeyCode.None);
+    internal static readonly PlayerKeybind Down = Register("vanilla:down", "Vanilla", "Down", KeyCode.DownArrow, KeyCode.None);
+    internal static readonly PlayerKeybind Right = Register("vanilla:right", "Vanilla", "Right", KeyCode.RightArrow, KeyCode.None);
+
     /// <summary>
     /// Registers a new keybind.
     /// </summary>
@@ -71,7 +88,6 @@ public sealed class PlayerKeybind
         gamepad = new[] { gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault };
     }
 
-    internal static readonly List<PlayerKeybind> keybinds = new();
     internal int index = -1;
     
     /// <summary>A unique ID.</summary>
@@ -126,7 +142,7 @@ public sealed class PlayerKeybind
         if (playerNumber is < 0 or > 3) {
             throw new ArgumentOutOfRangeException(nameof(playerNumber));
         }
-        if (RWCustom.Custom.rainWorld.options.controls[playerNumber].gamePad) {
+        if (CustomInputExt.UsingGamepad(playerNumber)) {
             return gamepad[playerNumber];
         }
         return keyboard[playerNumber];
@@ -142,7 +158,8 @@ public sealed class PlayerKeybind
 
         var rw = RWCustom.Custom.rainWorld;
         var controller = RWInput.PlayerRecentController(playerNumber, rw);
-        var controllerType = RWInput.PlayerControllerType(playerNumber, controller, rw);
+        rw.options.controls[playerNumber].UpdateActiveController(controller, false);
+        var controllerType = rw.options.controls[playerNumber].GetActivePreset();
 
         bool notMultiplayer = rw.processManager == null || !rw.processManager.IsGameInMultiplayerContext();
         if (!notMultiplayer && controllerType == Options.ControlSetup.Preset.None) {
@@ -173,18 +190,7 @@ public sealed class PlayerKeybind
             return false;
         }
 
-        Options.ControlSetup.Preset preset = rw.options.controls[playerNumber].IdentifyGamepadPreset();
-
-        if (preset != Options.ControlSetup.Preset.None) {
-            if (controllerType == Options.ControlSetup.Preset.XBox && preset != Options.ControlSetup.Preset.XBox) {
-                rw.options.controls[playerNumber].Setup(Options.ControlSetup.Preset.XBox);
-            }
-            else if (controllerType != Options.ControlSetup.Preset.XBox && preset == Options.ControlSetup.Preset.XBox) {
-                rw.options.controls[playerNumber].Setup(Options.ControlSetup.Preset.PS4DualShock);
-            }
-        }
-
-        return RWInput.ResolveButtonDown(RWInput.ConvertGamepadKeyCode(gamepad[playerNumber]), plr, controller, controllerType);
+        return CustomInputExt.ResolveButtonDown(CustomInputExt.ConvertGamepadKeyCode(gamepad[playerNumber]), plr, controller, controllerType);
     }
 
     /// <summary>
