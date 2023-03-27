@@ -39,7 +39,10 @@ sealed class Plugin : BaseUnityPlugin
 
     public void OnEnable()
     {
-        // TODO fix bug where opening game with a controller already enabled doesn't recognize the controller
+        // TODO Add `Any` controller option:
+        // - use a checkbox on input screen to configure Gamepad or Keyboard input
+        // - iterate controllers in getButton and getAxisRaw, OR them all.
+
         Logger = base.Logger;
 
         // Reverting vanilla input to 1.9.06 system
