@@ -5,6 +5,7 @@ using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
 using Rewired;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security.Permissions;
@@ -18,7 +19,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.2.2")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.3.0")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
@@ -72,6 +73,7 @@ sealed class Plugin : BaseUnityPlugin
 
         // Saving
         On.Options.ApplyOption += Options_ApplyOption;
+        On.Options.Load += Options_Load;
         On.Options.ToString += Options_ToString;
     }
 
@@ -219,7 +221,7 @@ sealed class Plugin : BaseUnityPlugin
 
             foreach (var sub in self.pages[0].subObjects) {
                 if (sub is InputSelectButton s
-                    && (!s.IndependentOfPlayer || self.CurrentControlSetup.index == 0)
+                    && (!s.PlayerOneOnly || self.CurrentControlSetup.index == 0)
                     && (s.MovementKey || !s.Gamepad) == (preset == Options.ControlSetup.Preset.KeyboardSinglePlayer)) {
                     s.Flash();
                 }
@@ -438,7 +440,6 @@ sealed class Plugin : BaseUnityPlugin
         var keybinds = PlayerKeybind.GuiKeybinds();
 
         // Added keybinds
-        Logger.LogDebug(keybinds.Count);
         float x = 120 + (menu.CurrLang == InGameTranslator.LanguageID.French || menu.CurrLang == InGameTranslator.LanguageID.German ? 30 : 0);
         int row = 0;
         int btn = 4;
@@ -460,8 +461,6 @@ sealed class Plugin : BaseUnityPlugin
 
     private void InputTester_Update(On.Menu.InputTesterHolder.InputTester.orig_Update orig, InputTesterHolder.InputTester self)
     {
-        Logger.LogDebug(self.testButtons.Length);
-
         orig(self);
 
         foreach (var btn in self.testButtons) {
@@ -490,6 +489,7 @@ sealed class Plugin : BaseUnityPlugin
             self.holdButton.held = RWInput.CheckPauseButton(0, self.menu.manager.rainWorld);
     }
 
+    readonly List<string> unregistered = new();
     private bool Options_ApplyOption(On.Options.orig_ApplyOption orig, Options self, string[] split)
     {
         // Return TRUE if invalid or unrecognized data
@@ -507,7 +507,7 @@ sealed class Plugin : BaseUnityPlugin
 
             PlayerKeybind keybind = PlayerKeybind.keybinds.FirstOrDefault(k => k.Id == id);
             if (keybind == null) {
-                Logger.LogDebug($"Unregistered keybind {id} in save file");
+                unregistered.Add(id);
                 return true;
             }
 
@@ -518,6 +518,15 @@ sealed class Plugin : BaseUnityPlugin
             return false;
         }
         return true;
+    }
+
+    private void Options_Load(On.Options.orig_Load orig, Options self)
+    {
+        unregistered.Clear();
+        orig(self);
+        if (unregistered.Count > 0) {
+            Logger.LogDebug($"Unregistered keybinds in save file: [{string.Join(", ", unregistered)}]");
+        }
     }
 
     private string Options_ToString(On.Options.orig_ToString orig, Options self)

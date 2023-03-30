@@ -63,18 +63,32 @@ public sealed class PlayerKeybind
     /// <exception cref="ArgumentException">The <paramref name="id"/> is invalid or already taken.</exception>
     public static PlayerKeybind Register(string id, string mod, string name, KeyCode keyboardPreset, KeyCode gamepadPreset, KeyCode xboxPreset)
     {
-        if (id.Contains("<optA>") || id.Contains("<optB>")) {
-            Debug.Log($"[ERROR] The keybind id {id} is invalid.");
-            throw new ArgumentException($"The keybind id {id} is invalid.");
-        }
-        if (keybinds.Any(k => k.Id == id)) {
-            Debug.Log($"[ERROR] A keybind with the id {id} has already been registered.");
-            throw new ArgumentException($"A keybind with the id {id} has already been registered.");
-        }
+        Validate(id, mod, name);
         keybinds.Add(new(id, mod, name, keyboardPreset, gamepadPreset, xboxPreset == KeyCode.None ? gamepadPreset : xboxPreset) {
             index = keybinds.Count
         });
         return keybinds.Last();
+    }
+
+    private static void Validate(string id, string mod, string name)
+    {
+        ArgumentException e = null;
+        if (string.IsNullOrWhiteSpace(id) || id.Contains("<optA>") || id.Contains("<optB>")) {
+            e = new ArgumentException($"The keybind id \"{id}\" is invalid.");
+        }
+        else if (string.IsNullOrWhiteSpace(mod)) {
+            e = new ArgumentException($"The keybind mod \"{mod}\" is invalid.");
+        }
+        else if (string.IsNullOrWhiteSpace(name)) {
+            e = new ArgumentException($"The keybind mod \"{name}\" is invalid.");
+        }
+        else if (keybinds.Any(k => k.Id == id)) {
+            e = new ArgumentException($"A keybind with the id {id} has already been registered.");
+        }
+        if (e != null) {
+            Debug.Log($"[ERROR] {e.Message}");
+            throw e;
+        }
     }
 
     /// <summary>
@@ -110,17 +124,14 @@ public sealed class PlayerKeybind
     /// <summary>The default value for Xbox controllers.</summary>
     public KeyCode XboxPreset { get; }
 
-    /// <summary>
-    /// If true, using the map suppresses the keybind.
-    /// </summary>
+    /// <summary>A longer description to show at the bottom of the screen when configuring the keybind.</summary>
+    public string Description { get; set; }
+
+    /// <summary>If true, using the map suppresses the keybind.</summary>
     public bool MapSuppressed { get; set; } = true;
-    /// <summary>
-    /// If true, sleeping suppresses the keybind.
-    /// </summary>
+    /// <summary>If true, sleeping suppresses the keybind.</summary>
     public bool SleepSuppressed { get; set; } = true;
-    /// <summary>
-    /// If true, the keybind will not be configurable through the Input Settings screen.
-    /// </summary>
+    /// <summary>If true, the keybind will not be configurable through the Input Settings screen.</summary>
     public bool HideConfig { get; set; } = false;
 
     internal readonly KeyCode[] keyboard;

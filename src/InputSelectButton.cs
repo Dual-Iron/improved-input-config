@@ -35,10 +35,10 @@ sealed class InputSelectButton : SimpleButton
     int lastPlayer;
     int Player => menu.manager.rainWorld.options.playerToSetInputFor;
 
-    public bool IndependentOfPlayer => keybind.index == 0; // just pause button for now
+    public bool PlayerOneOnly => keybind.index == 0; // just pause button for now
     public bool MovementKey => keybind.index is 5 or 6 or 7 or 8;
 
-    Options.ControlSetup ControlSetup => IndependentOfPlayer ? menu.manager.rainWorld.options.controls[0] : menu.CurrentControlSetup;
+    Options.ControlSetup ControlSetup => PlayerOneOnly ? menu.manager.rainWorld.options.controls[0] : menu.CurrentControlSetup;
 
     public InputSelectButton(MenuObject owner, PlayerKeybind keybind, bool compact, Vector2 pos) : base(owner.menu, owner, "", "", pos, new Vector2(30f, 30f))
     {
@@ -83,7 +83,7 @@ sealed class InputSelectButton : SimpleButton
 
         Color color = Color.Lerp(base.MyColor(timeStacker), Menu.Menu.MenuRGB(Menu.Menu.MenuColors.White), t);
 
-        if (current != KeyCode.None && !buttonBehav.greyedOut && !IndependentOfPlayer) {
+        if (current != KeyCode.None && !buttonBehav.greyedOut && !PlayerOneOnly) {
             bool DuplicateKeys(int player)
             {
                 Options.ControlSetup[] controls = menu.manager.rainWorld.options.controls;
@@ -174,7 +174,7 @@ sealed class InputSelectButton : SimpleButton
                 buttonBehav.greyedOut = false;
             }
         }
-        else if (IndependentOfPlayer) {
+        else if (PlayerOneOnly) {
             buttonBehav.greyedOut = menu.CurrentControlSetup.index != 0;
         }
         else if (MovementKey) {
@@ -183,7 +183,7 @@ sealed class InputSelectButton : SimpleButton
 
         if (!MovementKey && lastGamepad != Gamepad
             || !MovementKey && Gamepad && lastControllerType != ControllerType
-            || !IndependentOfPlayer && lastPlayer != Player && !(MovementKey && Gamepad)) {
+            || !PlayerOneOnly && lastPlayer != Player && !(MovementKey && Gamepad)) {
             RefreshKeyDisplay();
         }
 
@@ -234,21 +234,29 @@ sealed class InputSelectButton : SimpleButton
     {
         recentlyUsedFlash = Mathf.Max(recentlyUsedFlash, 0.65f);
 
-        string text = CustomInputExt.ButtonText(Player, CurrentlyDisplayed(), out buttonColor);
-        if (text.EndsWith("Arrow")) {
-            currentKey.label.alpha = 0;
-            arrow.alpha = 1;
-            arrow.rotation = text switch {
-                "LArrow" => -90,
-                "RArrow" => 90,
-                "DownArrow" => 180,
-                _ => 0
-            };
-        }
-        else {
+        bool notGreyed = !(MovementKey && Gamepad || PlayerOneOnly && menu.CurrentControlSetup.index != 0);
+        if (notGreyed && Gamepad && CustomInputExt.GetControllerType(ControlSetup.index) == Options.ControlSetup.Preset.None) {
             arrow.alpha = 0;
             currentKey.label.alpha = 1;
-            currentKey.text = text;
+            currentKey.text = "< N / A >";
+        }
+        else {
+            string text = CustomInputExt.ButtonText(Player, CurrentlyDisplayed(), out buttonColor);
+            if (text.EndsWith("Arrow")) {
+                currentKey.label.alpha = 0;
+                arrow.alpha = 1;
+                arrow.rotation = text switch {
+                    "LArrow" => -90,
+                    "RArrow" => 90,
+                    "DownArrow" => 180,
+                    _ => 0
+                };
+            }
+            else {
+                arrow.alpha = 0;
+                currentKey.label.alpha = 1;
+                currentKey.text = text;
+            }
         }
     }
 
@@ -262,7 +270,7 @@ sealed class InputSelectButton : SimpleButton
 
     public string HoverText()
     {
-        if (recentlyUsedGreyedOut < 1 && IndependentOfPlayer && menu.CurrentControlSetup.index != 0) {
+        if (recentlyUsedGreyedOut < 1 && PlayerOneOnly && menu.CurrentControlSetup.index != 0) {
             return menu.Translate("Only available for player 1");
         }
         if (recentlyUsedGreyedOut < 1 && MovementKey && Gamepad) {
@@ -272,6 +280,7 @@ sealed class InputSelectButton : SimpleButton
             return menu.Translate("Connect a controller to bind this button");
         }
         string mod = keybind.Mod == "Vanilla" ? "" : $" ({keybind.Mod})";
-        return Regex.Replace(menu.Translate("Bind <X> button"), "<X>", $"< {keybindLabel.text} >") + mod;
+        string desc = string.IsNullOrWhiteSpace(keybind.Description) ? "" : $"\n{keybind.Description}";
+        return Regex.Replace(menu.Translate("Bind <X> button"), "<X>", $"< {keybindLabel.text} >") + mod + desc;
     }
 }
