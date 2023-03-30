@@ -18,7 +18,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.2.1")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.2.2")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
@@ -438,10 +438,11 @@ sealed class Plugin : BaseUnityPlugin
         var keybinds = PlayerKeybind.GuiKeybinds();
 
         // Added keybinds
+        Logger.LogDebug(keybinds.Count);
         float x = 120 + (menu.CurrLang == InGameTranslator.LanguageID.French || menu.CurrLang == InGameTranslator.LanguageID.German ? 30 : 0);
         int row = 0;
         int btn = 4;
-        Array.Resize(ref self.testButtons, 4 - 5 + keybinds.Count);
+        Array.Resize(ref self.testButtons, Mathf.Max(self.testButtons.Length, keybinds.Count - 1)); // exclude pause button
         foreach (PlayerKeybind keybind in keybinds) {
             if (keybind.index is 0 or 5 or 6 or 7 or 8) {
                 continue;
@@ -459,6 +460,8 @@ sealed class Plugin : BaseUnityPlugin
 
     private void InputTester_Update(On.Menu.InputTesterHolder.InputTester.orig_Update orig, InputTesterHolder.InputTester self)
     {
+        Logger.LogDebug(self.testButtons.Length);
+
         orig(self);
 
         foreach (var btn in self.testButtons) {
@@ -504,7 +507,7 @@ sealed class Plugin : BaseUnityPlugin
 
             PlayerKeybind keybind = PlayerKeybind.keybinds.FirstOrDefault(k => k.Id == id);
             if (keybind == null) {
-                Logger.LogWarning($"Unregistered keybind {id} in save file");
+                Logger.LogDebug($"Unregistered keybind {id} in save file");
                 return true;
             }
 

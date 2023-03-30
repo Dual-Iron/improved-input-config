@@ -115,7 +115,7 @@ sealed class InputSelectButton : SimpleButton
             menu.PlaySound(SoundID.MENU_Error_Ping);
         }
         else {
-            if (keyCode == KeyCode.Escape && keybind.index != 0) {
+            if ((keyCode == KeyCode.Escape || keyCode == CurrentlyDisplayed()) && keybind.index != 0) {
                 menu.PlaySound(SoundID.MENU_Checkbox_Uncheck);
 
                 keyCode = KeyCode.None;
