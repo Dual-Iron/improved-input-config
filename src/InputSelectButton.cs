@@ -1,6 +1,5 @@
 ﻿using Menu;
 using RWCustom;
-using System;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
@@ -67,42 +66,50 @@ sealed class InputSelectButton : SimpleButton
     {
         bool arrowKey = keybind.index is 5 or 6 or 7 or 8;
 
-        return Gamepad && !arrowKey ? keybind.gamepad[ControlSetup.index] : keybind.keyboard[ControlSetup.index];
+        return Gamepad && !arrowKey ? keybind.Gamepad(ControlSetup.index) : keybind.Keyboard(ControlSetup.index);
     }
 
     public override Color MyColor(float timeStacker)
     {
         KeyCode current = CurrentlyDisplayed();
 
-        // Blink red if conflicting keys on current character
-        if (current != KeyCode.None && (blinkCounter % 20 < 10) && CustomInputExt.KeybindsOfType(Player, current, stopAt: 2) > 1) {
-            return Color.red;
-        }
-
         float t = (blinkCounter % 4 < 2) ? 0f : Custom.SCurve(Mathf.Lerp(lastRecentlyUsedFlash, recentlyUsedFlash, timeStacker), 0.4f);
 
         Color color = Color.Lerp(base.MyColor(timeStacker), Menu.Menu.MenuRGB(Menu.Menu.MenuColors.White), t);
 
-        if (current != KeyCode.None && !buttonBehav.greyedOut && !PlayerOneOnly) {
-            bool DuplicateKeys(int player)
-            {
-                Options.ControlSetup[] controls = menu.manager.rainWorld.options.controls;
-                if (Player == player || controls[Player].controlPreference != controls[player].controlPreference) {
-                    return false;
-                }
-                if (controls[player].UsingGamepad() && controls[Player].gamePadNumber != controls[player].gamePadNumber) {
-                    return false;
-                }
-                return CustomInputExt.KeybindsOfType(player, current, 1) > 0;
+        // Blink red if conflicting keys on current character
+        if (ConflictsWithAnyOnSamePlayer()) {
+            if (blinkCounter % 30 < 15) {
+                return Color.Lerp(color, Color.red, 0.8f);
             }
+            return color;
+        }
+
+
+        if (current != KeyCode.None && !buttonBehav.greyedOut && !PlayerOneOnly) {
             // Hint at Survivor, Monk, Hunter, or Nightcat (respectively) having a duplicate key
-            if (blinkCounter % 80 is < 20 && DuplicateKeys(0))              return Color.Lerp(color, new Color(1, 1, 1), 0.5f);
-            if (blinkCounter % 80 is >= 20 and < 40 && DuplicateKeys(1))    return Color.Lerp(color, new Color(1, 1, 0), 0.2f);
-            if (blinkCounter % 80 is >= 40 and < 60 && DuplicateKeys(2))    return Color.Lerp(color, new Color(1, 0, 0), 0.15f);
-            if (blinkCounter % 80 is >= 60 && DuplicateKeys(3))             return Color.Lerp(color, new Color(0, 0, .5f), 0.2f);
+            if (blinkCounter % 80 is < 20 && ConflictsWith(0))              return Color.Lerp(color, new Color(1, 1, 1), 0.5f);
+            if (blinkCounter % 80 is >= 20 and < 40 && ConflictsWith(1))    return Color.Lerp(color, new Color(1, 1, 0), 0.2f);
+            if (blinkCounter % 80 is >= 40 and < 60 && ConflictsWith(2))    return Color.Lerp(color, new Color(1, 0, 0), 0.15f);
+            if (blinkCounter % 80 is >= 60 && ConflictsWith(3))             return Color.Lerp(color, new Color(0, 0, .5f), 0.2f);
         }
 
         return color;
+    }
+
+    private bool ConflictsWithAnyOnSamePlayer()
+    {
+        foreach (var other in PlayerKeybind.keybinds) {
+            if (keybind.VisiblyConflictsWith(Player, other, Player)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private bool ConflictsWith(int otherPlayer)
+    {
+        return keybind.VisiblyConflictsWith(Player, keybind, otherPlayer);
     }
 
     public void InputAssigned(KeyCode keyCode)

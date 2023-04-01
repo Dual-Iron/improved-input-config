@@ -1,5 +1,4 @@
-﻿using Kittehface.Framework20;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -39,13 +38,13 @@ public sealed class CustomInput : IEquatable<CustomInput>
         bool gamePad = controllerType != Options.ControlSetup.Preset.KeyboardSinglePlayer;
         if (!gamePad) {
             foreach (var key in PlayerKeybind.keybinds) {
-                ret.pressed[key.index] = Input.GetKey(key.keyboard[playerNumber]);
+                ret.pressed[key.index] = Input.GetKey(key.Keyboard(playerNumber));
             }
             return ret;
         }
 
         foreach (var key in PlayerKeybind.keybinds) {
-            ret.pressed[key.index] = CustomInputExt.ResolveButtonDown(key.gamepad[playerNumber], controller, controllerType);
+            ret.pressed[key.index] = CustomInputExt.ResolveButtonDown(key.Gamepad(playerNumber), controller, controllerType);
         }
 
         return ret;

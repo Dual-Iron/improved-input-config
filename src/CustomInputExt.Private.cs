@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using UnityEngine;
 
 namespace ImprovedInput;
@@ -170,33 +169,6 @@ public static partial class CustomInputExt
             }
         }
         return ret;
-    }
-
-    internal static int KeybindsOfType(int playerNumber, KeyCode keyCode, int stopAt)
-    {
-        return AllKeybinds(playerNumber).Where(c => c == keyCode).Take(stopAt).Count();
-    }
-    internal static IEnumerable<KeyCode> AllKeybinds(int playerNumber)
-    {
-        // Deliberately only process player 0's pause button
-        Options.ControlSetup vanillaPlayer0 = RWCustom.Custom.rainWorld.options.controls[0];
-        if (vanillaPlayer0.controlPreference == Options.ControlSetup.ControlToUse.KEYBOARD)
-            yield return PlayerKeybind.Pause.keyboard[0];
-        else
-            yield return PlayerKeybind.Pause.gamepad[0];
-
-        // Start at index 1 to ignore pause button
-        Options.ControlSetup vanilla = RWCustom.Custom.rainWorld.options.controls[playerNumber];
-        if (vanilla.controlPreference == Options.ControlSetup.ControlToUse.KEYBOARD) {
-            for (int i = 1; i < PlayerKeybind.keybinds.Count; i++) {
-                yield return PlayerKeybind.keybinds[i].keyboard[playerNumber];
-            }
-        }
-        else {
-            for (int i = 1; i < PlayerKeybind.keybinds.Count; i++) {
-                yield return PlayerKeybind.keybinds[i].gamepad[playerNumber];
-            }
-        }
     }
 
     internal static bool ResolveButtonDown(KeyCode kc, Controller controller, Options.ControlSetup.Preset preset)

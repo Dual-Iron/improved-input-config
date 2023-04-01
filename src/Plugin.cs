@@ -4,6 +4,7 @@ using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
 using Rewired;
+using RWCustom;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,7 +20,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.3.0")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.4.0")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
@@ -69,6 +70,8 @@ sealed class Plugin : BaseUnityPlugin
         On.Menu.InputTesterHolder.InputTester.ctor += InputTester_ctor;
         On.Menu.InputTesterHolder.InputTester.Update += InputTester_Update;
         On.Menu.InputTesterHolder.InputTester.UpdateTestButtons += InputTester_UpdateTestButtons;
+        On.Menu.InputTesterHolder.InputTester.GetToPos += InputTester_GetToPos;
+        On.Menu.InputOptionsMenu.PlayerButton.Update += PlayerButton_Update;
         On.Menu.InputTesterHolder.Back.Update += Back_Update;
 
         // Saving
@@ -92,7 +95,7 @@ sealed class Plugin : BaseUnityPlugin
             2 => axisPositive ? PlayerKeybind.Up.keyboard[i] : PlayerKeybind.Down.keyboard[i],
             3 => PlayerKeybind.Grab.keyboard[i],
             4 => PlayerKeybind.Throw.keyboard[i],
-            5 => PlayerKeybind.Pause.keyboard[i],
+            5 => PlayerKeybind.Pause.Keyboard(i),
             11 => PlayerKeybind.Map.keyboard[i],
             _ => KeyCode.None,
         };
@@ -454,7 +457,7 @@ sealed class Plugin : BaseUnityPlugin
             row += 1;
             if (row > 3) {
                 row = 0;
-                x += 200;
+                x += 150;
             }
         }
     }
@@ -467,19 +470,43 @@ sealed class Plugin : BaseUnityPlugin
             if (btn.buttonIndex is not 5 and not 6 and not 7 and not 8) {
                 btn.pressed = PlayerKeybind.keybinds[btn.buttonIndex].CheckRawPressed(self.playerIndex);
             }
-            btn.playerAssignedToAnything = self.playerAssignedToAnything;
+            btn.playerAssignedToAnything = self.playerAssignedToAnything && CustomInputExt.ButtonText(self.playerIndex, PlayerKeybind.keybinds[btn.buttonIndex].CurrentBinding(btn.playerIndex), out _) != "None";
         }
     }
 
     private void InputTester_UpdateTestButtons(On.Menu.InputTesterHolder.InputTester.orig_UpdateTestButtons orig, InputTesterHolder.InputTester self)
     {
         foreach (var btn in self.testButtons) {
-            if (btn.menuLabel != null) {
-                Options.ControlSetup setup = self.menu.manager.rainWorld.options.controls[btn.playerIndex];
-                KeyCode keyCode = setup.UsingGamepad() ? PlayerKeybind.keybinds[btn.buttonIndex].gamepad[btn.playerIndex] : PlayerKeybind.keybinds[btn.buttonIndex].keyboard[btn.playerIndex];
-                btn.menuLabel.text = $"{btn.labelText} ( {CustomInputExt.ButtonText(self.playerIndex, keyCode, out _)} )";
+            if (btn.menuLabel == null) {
+                continue;
+            }
+
+            string text = CustomInputExt.ButtonText(self.playerIndex, PlayerKeybind.keybinds[btn.buttonIndex].CurrentBinding(btn.playerIndex), out _);
+
+            if (text == "None" || text == "< N / A >") {
+                btn.menuLabel.text = btn.labelText;
+            }
+            else {
+                btn.menuLabel.text = $"{btn.labelText} ({text})";
             }
         }
+    }
+
+    private Vector2 InputTester_GetToPos(On.Menu.InputTesterHolder.InputTester.orig_GetToPos orig, InputTesterHolder.InputTester self)
+    {
+        orig(self);
+
+        var menu = self.menu as InputOptionsMenu;
+        var fin = Custom.SCurve(1f - self.inPlace, 0.6f);
+        var a = new Vector2(self.playerIndex % 2 == 0 ? 200f : 260f, menu.playerButtons[self.playerIndex].size.y / 2f) + new Vector2(1500f * fin, 0);
+
+        return menu.playerButtons[self.playerIndex].pos + a - new Vector2((1366 - self.menu.manager.rainWorld.options.ScreenSize.x) / 2, 0);
+    }
+
+    private void PlayerButton_Update(On.Menu.InputOptionsMenu.PlayerButton.orig_Update orig, InputOptionsMenu.PlayerButton self)
+    {
+        orig(self);
+        self.pos = self.originalPos + new Vector2(0, 50 * (self.menu as InputOptionsMenu).inputTesterHolder.darkness);
     }
 
     private void Back_Update(On.Menu.InputTesterHolder.Back.orig_Update orig, InputTesterHolder.Back self)
