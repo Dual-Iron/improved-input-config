@@ -26,7 +26,7 @@ sealed class InputSelectButton : SimpleButton
     private bool init;
 
     private Options.ControlSetup.Preset lastControllerType = Options.ControlSetup.Preset.None;
-    Options.ControlSetup.Preset ControllerType => CustomInputExt.GetControllerType(Player);
+    Options.ControlSetup.Preset ControllerType => ControlSetup.GetActivePreset();
 
     bool lastGamepad;
     public bool Gamepad => CustomInputExt.UsingGamepad(ControlSetup.index);
@@ -242,10 +242,11 @@ sealed class InputSelectButton : SimpleButton
         recentlyUsedFlash = Mathf.Max(recentlyUsedFlash, 0.65f);
 
         bool notGreyed = !(MovementKey && Gamepad || PlayerOneOnly && menu.CurrentControlSetup.index != 0);
-        if (notGreyed && Gamepad && CustomInputExt.GetControllerType(ControlSetup.index) == Options.ControlSetup.Preset.None) {
+        if (notGreyed && Gamepad && ControlSetup.GetActivePreset() == Options.ControlSetup.Preset.None) {
             arrow.alpha = 0;
             currentKey.label.alpha = 1;
             currentKey.text = "< N / A >";
+            buttonColor = null;
         }
         else {
             string text = CustomInputExt.ButtonText(Player, CurrentlyDisplayed(), out buttonColor);

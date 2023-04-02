@@ -20,7 +20,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.4.0")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.4.1")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
@@ -46,6 +46,8 @@ sealed class Plugin : BaseUnityPlugin
         // - iterate controllers in getButton and getAxisRaw, OR them all.
 
         Logger = base.Logger;
+
+        On.RainWorld.Update += RainWorld_Update;
 
         // Reverting vanilla input to 1.9.06 system
         On.Options.ControlSetup.KeyCodeFromAction += KeyCodeFromAction;
@@ -80,6 +82,22 @@ sealed class Plugin : BaseUnityPlugin
         On.Options.ToString += Options_ToString;
     }
 
+    readonly List<Joystick> joysticks = new();
+
+    private void RainWorld_Update(On.RainWorld.orig_Update orig, RainWorld self)
+    {
+        orig(self);
+
+        if (!joysticks.SequenceEqual(ReInput.controllers.Joysticks)) {
+            joysticks.Clear();
+            joysticks.AddRange(ReInput.controllers.Joysticks);
+
+            foreach (var item in joysticks) {
+                Logger.LogDebug($"Assigned controller \"{item.name}\" with hid \"{item.hardwareIdentifier}\"");
+            }
+        }
+    }
+
     private KeyCode KeyCodeFromAction(On.Options.ControlSetup.orig_KeyCodeFromAction orig, Options.ControlSetup self, int actionID, int categoryID, bool axisPositive)
     {
         if (self.recentController == null || self.recentController.type != ControllerType.Keyboard) {
@@ -105,16 +123,16 @@ sealed class Plugin : BaseUnityPlugin
 
     private static Controller EnsureController(Options.ControlSetup setup)
     {
-        Controller ctrl = RWInput.PlayerRecentController(setup.index, RWCustom.Custom.rainWorld);
+        Controller ctrl = RWInput.PlayerRecentController(setup.index, Custom.rainWorld);
         if (ctrl != null) {
             return ctrl;
         }
         setup.UpdateControlPreference(setup.controlPreference, true);
-        return RWInput.PlayerRecentController(setup.index, RWCustom.Custom.rainWorld);
+        return RWInput.PlayerRecentController(setup.index, Custom.rainWorld);
     }
 
     private static readonly Func<Func<Rewired.Player, int, bool>, Rewired.Player, int, bool> getButton = (orig, player, actionId) => {
-        Options.ControlSetup setup = RWCustom.Custom.rainWorld.options.controls[player.id];
+        Options.ControlSetup setup = Custom.rainWorld.options.controls[player.id];
         Options.ControlSetup.Preset ty = setup.GetActivePreset();
         bool gamePad = ty != Options.ControlSetup.Preset.KeyboardSinglePlayer && ty != Options.ControlSetup.Preset.None;
         if (!gamePad) {
@@ -126,7 +144,7 @@ sealed class Plugin : BaseUnityPlugin
     };
 
     private static readonly Func<Func<Rewired.Player, int, float>, Rewired.Player, int, float> getAxisRaw = (orig, player, actionId) => {
-        Options.ControlSetup setup = RWCustom.Custom.rainWorld.options.controls[player.id];
+        Options.ControlSetup setup = Custom.rainWorld.options.controls[player.id];
         Options.ControlSetup.Preset ty = setup.GetActivePreset();
         bool gamePad = ty != Options.ControlSetup.Preset.KeyboardSinglePlayer && ty != Options.ControlSetup.Preset.None;
         if (!gamePad) {

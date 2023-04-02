@@ -1,4 +1,5 @@
 ﻿using Rewired;
+using RWCustom;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -45,7 +46,7 @@ public static partial class CustomInputExt
     {
         // Thank the internet honestly. It's not like I knew these mappings before googling them
         // Gets whatever controller `player` is using and displays the button name for that controller
-        Options.ControlSetup.Preset ty = GetControllerType(player);
+        Options.ControlSetup.Preset ty = Custom.rainWorld.options.controls[player].GetActivePreset();
 
         if (ty == Options.ControlSetup.Preset.XBox) {
             color = joystickButton switch {
@@ -115,30 +116,7 @@ public static partial class CustomInputExt
             };
         }
         color = null;
-        if (ty == Options.ControlSetup.Preset.None) {
-            return "< N / A >";
-        }
-        Plugin.Logger.LogWarning($"Unrecognized controller type {ty}");
-        return $"Button {joystickButton}";
-    }
-    internal static Options.ControlSetup.Preset GetControllerType(int player)
-    {
-        // Beg the game to tell us what controller is being used
-        int i = RWCustom.Custom.rainWorld.options.controls[player].gamePadNumber;
-        IList<Joystick> j = ReInput.controllers.Joysticks;
-        if (i < 0 || i >= j.Count) {
-            return Options.ControlSetup.Preset.None;
-        }
-        else if (RWInput.IsXboxControllerType(j[i].name, j[i].hardwareIdentifier)) {
-            return Options.ControlSetup.Preset.XBox;
-        }
-        else if (RWInput.IsSwitchProControllerType(j[i].name, j[i].hardwareIdentifier)) {
-            return Options.ControlSetup.Preset.SwitchProController;
-        }
-        else if (RWInput.IsPlaystationControllerType(j[i].name, j[i].hardwareIdentifier)) {
-            return Options.ControlSetup.Preset.PS4DualShock;
-        }
-        return new("???");
+        return "< N / A >";
     }
 
     static string KeyboardButtonName(KeyCode kc)
