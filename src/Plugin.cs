@@ -38,6 +38,7 @@ sealed class Plugin : BaseUnityPlugin
     internal static readonly ConditionalWeakTable<Player, PlayerData> players = new();
 
     public static new BepInEx.Logging.ManualLogSource Logger;
+	public const int extraPlyrs = 12;
 
     public void OnEnable()
     {
@@ -106,7 +107,7 @@ sealed class Plugin : BaseUnityPlugin
 
         // See RewiredConsts.Action
         int i = self.index;
-        if (i is < 0 or > 3) throw new InvalidOperationException("Invalid ControlSetup index " + i);
+        if (i is < 0 or > 3 + extraPlyrs) throw new InvalidOperationException("Invalid ControlSetup index " + i);
         return actionID switch {
             0 => PlayerKeybind.Jump.keyboard[i],
             1 => axisPositive ? PlayerKeybind.Right.keyboard[i] : PlayerKeybind.Left.keyboard[i],
@@ -178,7 +179,7 @@ sealed class Plugin : BaseUnityPlugin
         if (ModManager.MSC && self.abstractCreature.world.game.IsArenaSession && self.abstractCreature.world.game.GetArenaGameSession.chMeta != null) {
             playerNumber = 0;
         }
-        if (playerNumber is < 0 or > 3) {
+        if (playerNumber is < 0 or > 3 + extraPlyrs) {
             orig(self);
             return;
         }
@@ -473,7 +474,7 @@ sealed class Plugin : BaseUnityPlugin
             self.subObjects.Add(self.testButtons[btn++] = new(menu, self, new Vector2(x, 45 - row * 30), null, 0, menu.Translate(keybind.Name), keybind.index, playerIndex));
 
             row += 1;
-            if (row > 3) {
+            if (row > 3 + extraPlyrs) {
                 row = 0;
                 x += 150;
             }
@@ -543,7 +544,7 @@ sealed class Plugin : BaseUnityPlugin
             return false;
         }
         string key = split[0];
-        if (key == "iic:keybind" && split.Length > 3) {
+        if (key == "iic:keybind" && split.Length > 3 + extraPlyrs) {
             string id = split[1];
             string[] keyboard = split[2].Split(',');
             string[] gamepad = split[3].Split(',');
