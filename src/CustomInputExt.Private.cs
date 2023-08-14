@@ -14,7 +14,7 @@ public static partial class CustomInputExt
         // See RewiredConsts.Action
 
         int i = playerNumber;
-        if (i is < 0 or > 3) throw new ArgumentOutOfRangeException("Invalid player number " + i);
+        if (i is < 0 or > (3 + Plugin.extraPlyrs)) throw new ArgumentOutOfRangeException("Invalid player number " + i);
         return actionId switch {
             0 or 8 => PlayerKeybind.Jump.CurrentBinding(i),
             1 or 6 => positive ? PlayerKeybind.Right.CurrentBinding(i) : PlayerKeybind.Left.CurrentBinding(i),

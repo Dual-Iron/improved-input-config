@@ -32,7 +32,7 @@ public static partial class CustomInputExt
     /// <summary>Returns true if a given player is using a keyboard.</summary>
     public static bool UsingKeyboard(int playerNumber)
     {
-        if (playerNumber is < 0 or > 3) {
+        if (playerNumber is < 0 or > 3 + Plugin.extraPlyrs) {
             throw new System.ArgumentOutOfRangeException(nameof(playerNumber), "Player number must be 0, 1, 2, or 3.");
         }
         return RWCustom.Custom.rainWorld.options.controls[playerNumber].controlPreference == Options.ControlSetup.ControlToUse.KEYBOARD;
@@ -40,7 +40,7 @@ public static partial class CustomInputExt
     /// <summary>Returns true if a given player is using a gamepad.</summary>
     public static bool UsingGamepad(int playerNumber)
     {
-        if (playerNumber is < 0 or > 3) {
+        if (playerNumber is < 0 or > 3 + Plugin.extraPlyrs) {
             throw new System.ArgumentOutOfRangeException(nameof(playerNumber), "Player number must be 0, 1, 2, or 3.");
         }
         return RWCustom.Custom.rainWorld.options.controls[playerNumber].controlPreference == Options.ControlSetup.ControlToUse.SPECIFIC_GAMEPAD;
@@ -52,7 +52,7 @@ public static partial class CustomInputExt
     /// <returns>True if the key is bound.</returns>
     public static bool IsKeyBound(this Player player, PlayerKeybind key)
     {
-        if (player.AI != null || player.playerState.playerNumber is < 0 or > 3) {
+        if (player.AI != null || player.playerState.playerNumber is < 0 or > 3 + Plugin.extraPlyrs) {
             return false;
         }
         return !key.Unbound(player.playerState.playerNumber);
