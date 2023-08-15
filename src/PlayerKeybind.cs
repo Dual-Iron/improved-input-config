@@ -117,11 +117,14 @@ public sealed class PlayerKeybind
         KeyboardPreset = keyboardDefault;
         GamepadPreset = gamepadDefault;
         XboxPreset = xboxDefault;
-        //keyboard = new[] { keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault };
-        //gamepad = new[] { gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault };
-        //-WW
-        keyboard = new[] { keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault, keyboardDefault };
-        gamepad = new[] { gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault, gamepadDefault };
+
+        keyboard = new KeyCode[CustomInputExt.maxMaxPlayers];
+        gamepad = new KeyCode[CustomInputExt.maxMaxPlayers];
+
+        for (int i = 0; i < CustomInputExt.maxMaxPlayers; i++) {
+            keyboard[i] = keyboardDefault;
+            gamepad[i] = gamepadDefault;
+        }
     }
 
     internal int index = -1;
@@ -163,7 +166,7 @@ public sealed class PlayerKeybind
     /// <summary>The current keycode configured for the given <paramref name="playerNumber"/> on keyboard.</summary>
     public KeyCode Keyboard(int playerNumber)
     {
-        if (playerNumber is < 0 or > 3 + Plugin.extraPlyrs) {
+        if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers) {
             throw new ArgumentOutOfRangeException(nameof(playerNumber));
         }
         if (this == Pause) playerNumber = 0;
@@ -173,7 +176,7 @@ public sealed class PlayerKeybind
     /// <summary>The current keycode configured for the given <paramref name="playerNumber"/> on a controller.</summary>
     public KeyCode Gamepad(int playerNumber)
     {
-        if (playerNumber is < 0 or > 3 + Plugin.extraPlyrs) {
+        if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers) {
             throw new ArgumentOutOfRangeException(nameof(playerNumber));
         }
         if (this == Pause) playerNumber = 0;
@@ -183,7 +186,7 @@ public sealed class PlayerKeybind
     /// <summary>The current recognized keycode for the given <paramref name="playerNumber"/>.</summary>
     public KeyCode CurrentBinding(int playerNumber)
     {
-        if (playerNumber is < 0 or > 3 + Plugin.extraPlyrs) {
+        if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers) {
             throw new ArgumentOutOfRangeException(nameof(playerNumber));
         }
         if (this == Pause) playerNumber = 0;
@@ -223,7 +226,7 @@ public sealed class PlayerKeybind
     public bool CheckRawPressed(int playerNumber)
     {
         // More or less copypasted from RWInput.PlayerInputPC
-        if (playerNumber is < 0 or > 3 + Plugin.extraPlyrs) {
+        if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers) {
             throw new ArgumentOutOfRangeException(nameof(playerNumber));
         }
         if (this == Pause) playerNumber = 0;

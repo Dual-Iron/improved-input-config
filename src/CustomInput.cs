@@ -15,7 +15,7 @@ public sealed class CustomInput : IEquatable<CustomInput>
     {
         // More or less copypasted from RWInput.PlayerInputPC
         // See PlayerKeybind.cs
-        if (playerNumber is < 0 or > 3 + Plugin.extraPlyrs) {
+        if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers) {
             throw new ArgumentOutOfRangeException(nameof(playerNumber));
         }
 

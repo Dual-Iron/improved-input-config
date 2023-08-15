@@ -38,7 +38,6 @@ sealed class Plugin : BaseUnityPlugin
     internal static readonly ConditionalWeakTable<Player, PlayerData> players = new();
 
     public static new BepInEx.Logging.ManualLogSource Logger;
-	public const int extraPlyrs = 12;
 
     public void OnEnable()
     {
@@ -49,6 +48,7 @@ sealed class Plugin : BaseUnityPlugin
         Logger = base.Logger;
 
         On.RainWorld.Update += RainWorld_Update;
+        On.ProcessManager.PostSwitchMainProcess += ProcessManager_PostSwitchMainProcess;
 
         // Reverting vanilla input to 1.9.06 system
         On.Options.ControlSetup.KeyCodeFromAction += KeyCodeFromAction;
@@ -83,6 +83,15 @@ sealed class Plugin : BaseUnityPlugin
         On.Options.ToString += Options_ToString;
     }
 
+    private void ProcessManager_PostSwitchMainProcess(On.ProcessManager.orig_PostSwitchMainProcess orig, ProcessManager self, ProcessManager.ProcessID ID)
+    {
+        orig(self, ID);
+
+        if (CustomInputExt.MaxPlayers < RainWorld.PlayerObjectBodyColors.Length && RainWorld.PlayerObjectBodyColors.Length > 4) {
+            CustomInputExt.MaxPlayers = RainWorld.PlayerObjectBodyColors.Length;
+        }
+    }
+
     readonly List<Joystick> joysticks = new();
 
     private void RainWorld_Update(On.RainWorld.orig_Update orig, RainWorld self)
@@ -107,7 +116,7 @@ sealed class Plugin : BaseUnityPlugin
 
         // See RewiredConsts.Action
         int i = self.index;
-        if (i is < 0 or > 3 + extraPlyrs) throw new InvalidOperationException("Invalid ControlSetup index " + i);
+        if (i < 0 || i >= CustomInputExt.MaxPlayers) throw new InvalidOperationException("Invalid ControlSetup index " + i);
         return actionID switch {
             0 => PlayerKeybind.Jump.keyboard[i],
             1 => axisPositive ? PlayerKeybind.Right.keyboard[i] : PlayerKeybind.Left.keyboard[i],
@@ -179,7 +188,7 @@ sealed class Plugin : BaseUnityPlugin
         if (ModManager.MSC && self.abstractCreature.world.game.IsArenaSession && self.abstractCreature.world.game.GetArenaGameSession.chMeta != null) {
             playerNumber = 0;
         }
-        if (playerNumber is < 0 or > 3 + extraPlyrs) {
+        if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers) {
             orig(self);
             return;
         }
@@ -474,7 +483,7 @@ sealed class Plugin : BaseUnityPlugin
             self.subObjects.Add(self.testButtons[btn++] = new(menu, self, new Vector2(x, 45 - row * 30), null, 0, menu.Translate(keybind.Name), keybind.index, playerIndex));
 
             row += 1;
-            if (row > 3 + extraPlyrs) {
+            if (row >= CustomInputExt.MaxPlayers) {
                 row = 0;
                 x += 150;
             }
@@ -544,7 +553,7 @@ sealed class Plugin : BaseUnityPlugin
             return false;
         }
         string key = split[0];
-        if (key == "iic:keybind" && split.Length > 3 + extraPlyrs) {
+        if (key == "iic:keybind") {
             string id = split[1];
             string[] keyboard = split[2].Split(',');
             string[] gamepad = split[3].Split(',');
@@ -557,7 +566,7 @@ sealed class Plugin : BaseUnityPlugin
                 return true;
             }
 
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < CustomInputExt.maxMaxPlayers; i++) {
                 if (Enum.TryParse(keyboard[i], out KeyCode k)) keybind.keyboard[i] = k;
                 if (Enum.TryParse(gamepad[i], out KeyCode k2)) keybind.gamepad[i] = k2;
             }

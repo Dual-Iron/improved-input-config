@@ -7,6 +7,8 @@ namespace ImprovedInput;
 /// </summary>
 public static partial class CustomInputExt
 {
+    internal const int maxMaxPlayers = 16;
+    internal static int maxPlayers = 4;
     internal static int historyLength = 10;
     internal static bool historyLocked = false;
 
@@ -24,6 +26,23 @@ public static partial class CustomInputExt
         }
     }
 
+    /// <summary>
+    /// The number of players who could possibly be receiving input at the moment.
+    /// </summary>
+    /// <remarks>This value starts at 10 and can only be increased. Set it when your mod is being enabled. Avoid setting this to anything extremely high.</remarks>
+    public static int MaxPlayers {
+        get => MaxPlayers;
+        set {
+            if (value < 4) {
+                throw new System.InvalidOperationException("Max player count can't be less than four.");
+            }
+            if (value >= maxMaxPlayers) {
+                throw new System.InvalidOperationException($"Max player count can't be more than {maxMaxPlayers}.");
+            }
+            historyLength = Mathf.Max(historyLength, value);
+        }
+    }
+
     /// <summary>Returns true if a given control setup uses a keyboard.</summary>
     public static bool UsingKeyboard(this Options.ControlSetup setup) => UsingKeyboard(setup.index);
     /// <summary>Returns true if a given control setup uses a gamepad.</summary>
@@ -32,7 +51,7 @@ public static partial class CustomInputExt
     /// <summary>Returns true if a given player is using a keyboard.</summary>
     public static bool UsingKeyboard(int playerNumber)
     {
-        if (playerNumber is < 0 or > 3 + Plugin.extraPlyrs) {
+        if (playerNumber < 0 || playerNumber >= MaxPlayers) {
             throw new System.ArgumentOutOfRangeException(nameof(playerNumber), "Player number must be 0, 1, 2, or 3.");
         }
         return RWCustom.Custom.rainWorld.options.controls[playerNumber].controlPreference == Options.ControlSetup.ControlToUse.KEYBOARD;
@@ -40,7 +59,7 @@ public static partial class CustomInputExt
     /// <summary>Returns true if a given player is using a gamepad.</summary>
     public static bool UsingGamepad(int playerNumber)
     {
-        if (playerNumber is < 0 or > 3 + Plugin.extraPlyrs) {
+        if (playerNumber < 0 || playerNumber >= MaxPlayers) {
             throw new System.ArgumentOutOfRangeException(nameof(playerNumber), "Player number must be 0, 1, 2, or 3.");
         }
         return RWCustom.Custom.rainWorld.options.controls[playerNumber].controlPreference == Options.ControlSetup.ControlToUse.SPECIFIC_GAMEPAD;
@@ -52,7 +71,7 @@ public static partial class CustomInputExt
     /// <returns>True if the key is bound.</returns>
     public static bool IsKeyBound(this Player player, PlayerKeybind key)
     {
-        if (player.AI != null || player.playerState.playerNumber is < 0 or > 3 + Plugin.extraPlyrs) {
+        if (player.AI != null || player.playerState.playerNumber < 0 || player.playerState.playerNumber >= MaxPlayers) {
             return false;
         }
         return !key.Unbound(player.playerState.playerNumber);
