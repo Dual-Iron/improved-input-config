@@ -566,7 +566,8 @@ sealed class Plugin : BaseUnityPlugin
                 return true;
             }
 
-            for (int i = 0; i < CustomInputExt.maxMaxPlayers; i++) {
+            // min to prevent OOB
+            for (int i = 0; i < Mathf.Min(keyboard.Length, CustomInputExt.maxMaxPlayers); i++) {
                 if (Enum.TryParse(keyboard[i], out KeyCode k)) keybind.keyboard[i] = k;
                 if (Enum.TryParse(gamepad[i], out KeyCode k2)) keybind.gamepad[i] = k2;
             }
