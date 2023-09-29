@@ -31,15 +31,15 @@ public static partial class CustomInputExt
     /// </summary>
     /// <remarks>This value starts at 10 and can only be increased. Set it when your mod is being enabled. Avoid setting this to anything extremely high.</remarks>
     public static int MaxPlayers {
-        get => MaxPlayers;
+        get => maxPlayers;
         set {
             if (value < 4) {
                 throw new System.InvalidOperationException("Max player count can't be less than four.");
             }
-            if (value >= maxMaxPlayers) {
+            if (value > maxMaxPlayers) {
                 throw new System.InvalidOperationException($"Max player count can't be more than {maxMaxPlayers}.");
             }
-            historyLength = Mathf.Max(historyLength, value);
+            maxPlayers = Mathf.Max(maxPlayers, value);
         }
     }
 

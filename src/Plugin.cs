@@ -20,7 +20,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.4.1")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.4.2")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
@@ -87,7 +87,7 @@ sealed class Plugin : BaseUnityPlugin
     {
         orig(self, ID);
 
-        if (CustomInputExt.MaxPlayers < RainWorld.PlayerObjectBodyColors.Length && RainWorld.PlayerObjectBodyColors.Length > 4) {
+        if (CustomInputExt.MaxPlayers < RainWorld.PlayerObjectBodyColors.Length && RainWorld.PlayerObjectBodyColors.Length > 4 && RainWorld.PlayerObjectBodyColors.Length <= 16) {
             CustomInputExt.MaxPlayers = RainWorld.PlayerObjectBodyColors.Length;
         }
     }
