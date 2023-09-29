@@ -48,7 +48,6 @@ sealed class Plugin : BaseUnityPlugin
         Logger = base.Logger;
 
         On.RainWorld.Update += RainWorld_Update;
-        On.ProcessManager.PostSwitchMainProcess += ProcessManager_PostSwitchMainProcess;
 
         // Reverting vanilla input to 1.9.06 system
         On.Options.ControlSetup.KeyCodeFromAction += KeyCodeFromAction;
@@ -83,14 +82,7 @@ sealed class Plugin : BaseUnityPlugin
         On.Options.ToString += Options_ToString;
     }
 
-    private void ProcessManager_PostSwitchMainProcess(On.ProcessManager.orig_PostSwitchMainProcess orig, ProcessManager self, ProcessManager.ProcessID ID)
-    {
-        orig(self, ID);
 
-        if (CustomInputExt.MaxPlayers < RainWorld.PlayerObjectBodyColors.Length && RainWorld.PlayerObjectBodyColors.Length > 4) {
-            CustomInputExt.MaxPlayers = RainWorld.PlayerObjectBodyColors.Length;
-        }
-    }
 
     readonly List<Joystick> joysticks = new();
 
