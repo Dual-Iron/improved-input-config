@@ -20,7 +20,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.4.1")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.4.4")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
@@ -581,7 +581,23 @@ sealed class Plugin : BaseUnityPlugin
     {
         string ret = orig(self);
         foreach (PlayerKeybind k in PlayerKeybind.keybinds) {
-            ret += $"iic:keybind<optB>{k.Id}<optB>{k.keyboard[0]},{k.keyboard[1]},{k.keyboard[2]},{k.keyboard[3]}<optB>{k.gamepad[0]},{k.gamepad[1]},{k.gamepad[2]},{k.gamepad[3]}<optA>";
+            //ret += $"iic:keybind<optB>{k.Id}<optB>{k.keyboard[0]},{k.keyboard[1]},{k.keyboard[2]},{k.keyboard[3]}<optB>{k.gamepad[0]},{k.gamepad[1]},{k.gamepad[2]},{k.gamepad[3]}<optA>";
+            ret += $"iic:keybind<optB>{k.Id}<optB>";
+            for (int l = 0; l < CustomInputExt.maxMaxPlayers; l++)
+            {
+                if (l != 0)
+                    ret += ",";
+                ret += $"{k.keyboard[l]}";
+            }
+            ret += "<optB>";
+            for (int l = 0; l < CustomInputExt.maxMaxPlayers; l++)
+            {
+                if (l != 0)
+                    ret += ",";
+                ret += $"{k.gamepad[l]}";
+            }
+            ret += "<optA>";
+            // CustomInputExt.MaxPlayers
         }
         return ret;
     }
