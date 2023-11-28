@@ -20,7 +20,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.4.3")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.4.4")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
@@ -48,7 +48,6 @@ sealed class Plugin : BaseUnityPlugin
         Logger = base.Logger;
 
         On.RainWorld.Update += RainWorld_Update;
-        On.ProcessManager.PostSwitchMainProcess += ProcessManager_PostSwitchMainProcess;
 
         // Reverting vanilla input to 1.9.06 system
         On.Options.ControlSetup.KeyCodeFromAction += KeyCodeFromAction;
@@ -83,14 +82,7 @@ sealed class Plugin : BaseUnityPlugin
         On.Options.ToString += Options_ToString;
     }
 
-    private void ProcessManager_PostSwitchMainProcess(On.ProcessManager.orig_PostSwitchMainProcess orig, ProcessManager self, ProcessManager.ProcessID ID)
-    {
-        orig(self, ID);
 
-        if (CustomInputExt.MaxPlayers < RainWorld.PlayerObjectBodyColors.Length && RainWorld.PlayerObjectBodyColors.Length > 4 && RainWorld.PlayerObjectBodyColors.Length <= 16) {
-            CustomInputExt.MaxPlayers = RainWorld.PlayerObjectBodyColors.Length;
-        }
-    }
 
     readonly List<Joystick> joysticks = new();
 
@@ -589,7 +581,23 @@ sealed class Plugin : BaseUnityPlugin
     {
         string ret = orig(self);
         foreach (PlayerKeybind k in PlayerKeybind.keybinds) {
-            ret += $"iic:keybind<optB>{k.Id}<optB>{k.keyboard[0]},{k.keyboard[1]},{k.keyboard[2]},{k.keyboard[3]}<optB>{k.gamepad[0]},{k.gamepad[1]},{k.gamepad[2]},{k.gamepad[3]}<optA>";
+            //ret += $"iic:keybind<optB>{k.Id}<optB>{k.keyboard[0]},{k.keyboard[1]},{k.keyboard[2]},{k.keyboard[3]}<optB>{k.gamepad[0]},{k.gamepad[1]},{k.gamepad[2]},{k.gamepad[3]}<optA>";
+            ret += $"iic:keybind<optB>{k.Id}<optB>";
+            for (int l = 0; l < CustomInputExt.maxMaxPlayers; l++)
+            {
+                if (l != 0)
+                    ret += ",";
+                ret += $"{k.keyboard[l]}";
+            }
+            ret += "<optB>";
+            for (int l = 0; l < CustomInputExt.maxMaxPlayers; l++)
+            {
+                if (l != 0)
+                    ret += ",";
+                ret += $"{k.gamepad[l]}";
+            }
+            ret += "<optA>";
+            // CustomInputExt.MaxPlayers
         }
         return ret;
     }

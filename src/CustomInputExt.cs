@@ -30,18 +30,9 @@ public static partial class CustomInputExt
     /// The number of players who could possibly be receiving input at the moment.
     /// </summary>
     /// <remarks>This value starts at 10 and can only be increased. Set it when your mod is being enabled. Avoid setting this to anything extremely high.</remarks>
-    public static int MaxPlayers {
-        get => maxPlayers;
-        set {
-            if (value < 4) {
-                throw new System.InvalidOperationException("Max player count can't be less than four.");
-            }
-            if (value > maxMaxPlayers) {
-                throw new System.InvalidOperationException($"Max player count can't be more than {maxMaxPlayers}.");
-            }
-            maxPlayers = Mathf.Max(maxPlayers, value);
-        }
-    }
+
+    public static int MaxPlayers = RainWorld.PlayerObjectBodyColors.Length;
+    
 
     /// <summary>Returns true if a given control setup uses a keyboard.</summary>
     public static bool UsingKeyboard(this Options.ControlSetup setup) => UsingKeyboard(setup.index);
