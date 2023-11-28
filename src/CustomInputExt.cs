@@ -8,7 +8,7 @@ namespace ImprovedInput;
 public static partial class CustomInputExt
 {
     internal const int maxMaxPlayers = 16;
-    internal static int maxPlayers = 4;
+    internal static int maxPlayers = RainWorld.PlayerObjectBodyColors.Length;
     internal static int historyLength = 10;
     internal static bool historyLocked = false;
 
@@ -29,10 +29,19 @@ public static partial class CustomInputExt
     /// <summary>
     /// The number of players who could possibly be receiving input at the moment.
     /// </summary>
-    /// <remarks>This value starts at 10 and can only be increased. Set it when your mod is being enabled. Avoid setting this to anything extremely high.</remarks>
-
-    public static int MaxPlayers = RainWorld.PlayerObjectBodyColors.Length;
-    
+    /// <remarks>This value starts at <see cref="RainWorld.PlayerObjectBodyColors"/>.Length.</remarks>
+    public static int MaxPlayers {
+        get => maxPlayers;
+        set {
+            if (value < 4) {
+                throw new System.InvalidOperationException("Max player count can't be less than four.");
+            }
+            if (value > maxMaxPlayers) {
+                throw new System.InvalidOperationException($"Max player count can't be more than {maxMaxPlayers}.");
+            }
+            maxPlayers = value;
+        }
+    }
 
     /// <summary>Returns true if a given control setup uses a keyboard.</summary>
     public static bool UsingKeyboard(this Options.ControlSetup setup) => UsingKeyboard(setup.index);
@@ -43,7 +52,7 @@ public static partial class CustomInputExt
     public static bool UsingKeyboard(int playerNumber)
     {
         if (playerNumber < 0 || playerNumber >= MaxPlayers) {
-            throw new System.ArgumentOutOfRangeException(nameof(playerNumber), "Player number must be 0, 1, 2, or 3.");
+            throw new System.ArgumentOutOfRangeException(nameof(playerNumber), $"Player number {playerNumber} is not valid.");
         }
         return RWCustom.Custom.rainWorld.options.controls[playerNumber].controlPreference == Options.ControlSetup.ControlToUse.KEYBOARD;
     }
@@ -51,7 +60,7 @@ public static partial class CustomInputExt
     public static bool UsingGamepad(int playerNumber)
     {
         if (playerNumber < 0 || playerNumber >= MaxPlayers) {
-            throw new System.ArgumentOutOfRangeException(nameof(playerNumber), "Player number must be 0, 1, 2, or 3.");
+            throw new System.ArgumentOutOfRangeException(nameof(playerNumber), $"Player number {playerNumber} is not valid.");
         }
         return RWCustom.Custom.rainWorld.options.controls[playerNumber].controlPreference == Options.ControlSetup.ControlToUse.SPECIFIC_GAMEPAD;
     }
