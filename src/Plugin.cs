@@ -20,7 +20,7 @@ using UnityEngine;
 
 namespace ImprovedInput;
 
-[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.4.4")]
+[BepInPlugin("com.dual.improved-input-config", "Improved Input Config", "1.5.0")]
 sealed class Plugin : BaseUnityPlugin
 {
     internal sealed class PlayerData
@@ -117,6 +117,7 @@ sealed class Plugin : BaseUnityPlugin
             4 => PlayerKeybind.Throw.keyboard[i],
             5 => PlayerKeybind.Pause.Keyboard(i),
             11 => PlayerKeybind.Map.keyboard[i],
+            34 => PlayerKeybind.Special.keyboard[i],
             _ => KeyCode.None,
         };
     }
@@ -125,12 +126,12 @@ sealed class Plugin : BaseUnityPlugin
 
     private static Controller EnsureController(Options.ControlSetup setup)
     {
-        Controller ctrl = RWInput.PlayerRecentController(setup.index, Custom.rainWorld);
+        Controller ctrl = RWInput.PlayerRecentController(setup.index);
         if (ctrl != null) {
             return ctrl;
         }
         setup.UpdateControlPreference(setup.controlPreference, true);
-        return RWInput.PlayerRecentController(setup.index, Custom.rainWorld);
+        return RWInput.PlayerRecentController(setup.index);
     }
 
     private static readonly Func<Func<Rewired.Player, int, bool>, Rewired.Player, int, bool> getButton = (orig, player, actionId) => {
@@ -281,8 +282,8 @@ sealed class Plugin : BaseUnityPlugin
             : new Vector2(columns > 2 ? 1136 : 1024, 642);
         var y = 0f;
 
-        // Start at 9, after all vanilla keybinds
-        for (int i = 9; i < keybinds.Count; i++) {
+        // Start at 10, after all vanilla keybinds
+        for (int i = 10; i < keybinds.Count; i++) {
             PlayerKeybind keybind = keybinds[i];
             s.Add(new InputSelectButton(self.pages[0], keybind, c, new Vector2(o.x, o.y - y)));
             y += 40;
@@ -320,6 +321,7 @@ sealed class Plugin : BaseUnityPlugin
         s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Grab, c, o - new Vector2(0, y += 20)));
         s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Jump, c, o - new Vector2(0, y += 40)));
         s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Throw, c, o - new Vector2(0, y += 40)));
+        s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Special, c, o - new Vector2(0, y += 40)));
         s.Add(new InputSelectButton(self.pages[0], PlayerKeybind.Map, c, o - new Vector2(0, y += 40)));
 
         // --- Preset button ---
@@ -454,7 +456,7 @@ sealed class Plugin : BaseUnityPlugin
 
         // Remove buttons. Leave the first four ( the arrow keys ).
         foreach (var testButton in self.testButtons) {
-            if (testButton.buttonIndex is 5 or 6 or 7 or 8) continue;
+            if (testButton.buttonIndex is 6 or 7 or 8 or 9) continue;
 
             self.RemoveSubObject(testButton);
             testButton.RemoveSprites();
@@ -468,7 +470,7 @@ sealed class Plugin : BaseUnityPlugin
         int btn = 4;
         Array.Resize(ref self.testButtons, Mathf.Max(self.testButtons.Length, keybinds.Count - 1)); // exclude pause button
         foreach (PlayerKeybind keybind in keybinds) {
-            if (keybind.index is 0 or 5 or 6 or 7 or 8) {
+            if (keybind.index is 0 or 6 or 7 or 8 or 9) {
                 continue;
             }
 
@@ -487,7 +489,10 @@ sealed class Plugin : BaseUnityPlugin
         orig(self);
 
         foreach (var btn in self.testButtons) {
-            if (btn.buttonIndex is not 5 and not 6 and not 7 and not 8) {
+            if (btn.buttonIndex >= PlayerKeybind.keybinds.Count)
+                return;
+
+            if (btn.buttonIndex is not 6 and not 7 and not 8 and not 9) {
                 btn.pressed = PlayerKeybind.keybinds[btn.buttonIndex].CheckRawPressed(self.playerIndex);
             }
             btn.playerAssignedToAnything = self.playerAssignedToAnything && CustomInputExt.ButtonText(self.playerIndex, PlayerKeybind.keybinds[btn.buttonIndex].CurrentBinding(btn.playerIndex), out _) != "None";
@@ -533,7 +538,7 @@ sealed class Plugin : BaseUnityPlugin
     {
         orig(self);
         if (self.holder.active)
-            self.holdButton.held = RWInput.CheckPauseButton(0, self.menu.manager.rainWorld);
+            self.holdButton.held = RWInput.CheckPauseButton(0);
     }
 
     readonly List<string> unregistered = new();

@@ -23,6 +23,7 @@ public static partial class CustomInputExt
             4 or 9 => PlayerKeybind.Throw.CurrentBinding(i),
             5 => PlayerKeybind.Pause.CurrentBinding(i),
             11 => PlayerKeybind.Map.CurrentBinding(i),
+            34 => PlayerKeybind.Special.CurrentBinding(i),
             _ => KeyCode.None,
         };
     }

@@ -37,6 +37,8 @@ public sealed class PlayerKeybind
     public static readonly PlayerKeybind Jump = Register("vanilla:jump", "Vanilla", "Jump", KeyCode.Z, KeyCode.JoystickButton1, KeyCode.JoystickButton0);
     /// <summary>The THROW button.</summary>
     public static readonly PlayerKeybind Throw = Register("vanilla:throw", "Vanilla", "Throw", KeyCode.X, KeyCode.JoystickButton2, KeyCode.JoystickButton1);
+    /// <summary>The SPECIAL button.</summary>
+    public static readonly PlayerKeybind Special = Register("vanilla:special", "Vanilla", "Special", KeyCode.C, KeyCode.JoystickButton3, KeyCode.JoystickButton3);
 
     /// <summary>The UP button. Ignored for controllers.</summary>
     public static readonly PlayerKeybind Up = Register("vanilla:up", "Vanilla", "Up", KeyCode.UpArrow, KeyCode.None);
@@ -232,7 +234,7 @@ public sealed class PlayerKeybind
         if (this == Pause) playerNumber = 0;
 
         var rw = RWCustom.Custom.rainWorld;
-        var controller = RWInput.PlayerRecentController(playerNumber, rw);
+        var controller = RWInput.PlayerRecentController(playerNumber);
         rw.options.controls[playerNumber].UpdateActiveController(controller, false);
         var controllerType = rw.options.controls[playerNumber].GetActivePreset();
 

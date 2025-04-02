@@ -22,7 +22,7 @@ public sealed class CustomInput : IEquatable<CustomInput>
         CustomInput ret = new();
 
         var rw = RWCustom.Custom.rainWorld;
-        var controller = RWInput.PlayerRecentController(playerNumber, rw);
+        var controller = RWInput.PlayerRecentController(playerNumber);
         rw.options.controls[playerNumber].UpdateActiveController(controller, false);
         var controllerType = rw.options.controls[playerNumber].GetActivePreset();
 
