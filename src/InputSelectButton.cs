@@ -35,7 +35,7 @@ sealed class InputSelectButton : SimpleButton
     int Player => menu.manager.rainWorld.options.playerToSetInputFor;
 
     public bool PlayerOneOnly => keybind.index == 0; // just pause button for now
-    public bool MovementKey => keybind.index is 5 or 6 or 7 or 8;
+    public bool MovementKey => keybind.index is 6 or 7 or 8 or 9;
 
     Options.ControlSetup ControlSetup => PlayerOneOnly ? menu.manager.rainWorld.options.controls[0] : menu.CurrentControlSetup;
 
@@ -64,7 +64,7 @@ sealed class InputSelectButton : SimpleButton
 
     private KeyCode CurrentlyDisplayed()
     {
-        bool arrowKey = keybind.index is 5 or 6 or 7 or 8;
+        bool arrowKey = keybind.index is 6 or 7 or 8 or 9;
 
         return Gamepad && !arrowKey ? keybind.Gamepad(ControlSetup.index) : keybind.Keyboard(ControlSetup.index);
     }
