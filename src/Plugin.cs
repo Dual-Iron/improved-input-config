@@ -44,32 +44,24 @@ sealed class Plugin : BaseUnityPlugin
         // TODO Add `Any` controller option:
         // - use a checkbox on input screen to configure Gamepad or Keyboard input
         // - iterate controllers in getButton and getAxisRaw, OR them all.
-        Player player; // TODO remove?
+        //Player player;
 
         Logger = base.Logger;
 
-        // possible rewrite needed
-        // Updating custom inputs (basic API yaaay)
-        //On.Player.checkInput += UpdateInput;
-        //On.Player.UpdateMSC += UpdateNoInputCounter;
+        // UserData
+        new Hook(AccessTools.Method(typeof(UserData), "GetActions_Copy"), UserData_GetActions_Hook);
 
-        // TODO rewrite
-        // Presets
-        
+        // Updating custom inputs (basic API yaaay)
+        On.Player.checkInput += UpdateInput;
+        On.Player.UpdateMSC += UpdateNoInputCounter;
 
         // Saving
         //On.Options.ApplyOption += Options_ApplyOption;
         //On.Options.Load += Options_Load;
         //On.Options.ToString += Options_ToString;
 
-
-        // New Code
-        // UserData
-        new Hook(AccessTools.Method(typeof(UserData), "GetActions_Copy"), UserData_GetActions_Hook);
-
         // Input Menu stuff
         InputMenuHooks.InitHooks();
-        
     }
 
     // Adding new Input Actions when the game loads. +(35-64)
@@ -94,30 +86,6 @@ sealed class Plugin : BaseUnityPlugin
         return actions;
     }
 
-    [Obsolete]
-    private KeyCode KeyCodeFromAction(On.Options.ControlSetup.orig_KeyCodeFromAction orig, Options.ControlSetup self, int actionID, int categoryID, bool axisPositive)
-    {
-        if (self.recentController == null || self.recentController.type != ControllerType.Keyboard) {
-            return KeyCode.None;
-        }
-
-        // See RewiredConsts.Action
-        int i = self.index;
-        if (i < 0 || i >= CustomInputExt.MaxPlayers) throw new InvalidOperationException("Invalid ControlSetup index " + i);
-        return actionID switch {
-            0 => PlayerKeybind.Jump.keyboard[i],
-            1 => axisPositive ? PlayerKeybind.Right.keyboard[i] : PlayerKeybind.Left.keyboard[i],
-            2 => axisPositive ? PlayerKeybind.Up.keyboard[i] : PlayerKeybind.Down.keyboard[i],
-            3 => PlayerKeybind.Grab.keyboard[i],
-            4 => PlayerKeybind.Throw.keyboard[i],
-            5 => PlayerKeybind.Pause.Keyboard(i),
-            11 => PlayerKeybind.Map.keyboard[i],
-            34 => PlayerKeybind.Special.keyboard[i],
-            _ => KeyCode.None,
-        };
-    }
-
-    //TODO rewrite
     private void UpdateInput(On.Player.orig_checkInput orig, Player self)
     {
         CustomInputExt.historyLocked = true;

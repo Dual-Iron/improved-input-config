@@ -74,7 +74,7 @@ public static partial class CustomInputExt
         if (player.AI != null || player.playerState.playerNumber < 0 || player.playerState.playerNumber >= MaxPlayers) {
             return false;
         }
-        return !key.Unbound(player.playerState.playerNumber);
+        return key.Bound(player.playerState.playerNumber);
     }
     /// <summary>
     /// Checks if <paramref name="key"/> is unbound for <paramref name="player"/>.
@@ -125,5 +125,20 @@ public static partial class CustomInputExt
     public static CustomInput[] RawInputHistory(this Player player)
     {
         return Plugin.players.GetValue(player, _ => new()).rawInput;
+    }
+
+    internal static int GetMouseMapping(this Options.ControlSetup controlSetup, int actionID, bool axisPositive)
+    {
+        int mouse = -1;
+        string key = actionID + "," + (axisPositive ? "1" : "0");
+        if (!controlSetup.mouseButtonMappings.TryGetValue(key, out mouse))
+            mouse = -1;
+        return mouse;
+    }
+
+    internal static void SetMouseMapping(this Options.ControlSetup controlSetup, int actionID, bool axisPositive, int mouseIndex)
+    {
+        string key = actionID + "," + (axisPositive ? "1" : "0");
+        controlSetup.mouseButtonMappings[key] = mouseIndex;
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Rewired;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -17,6 +18,8 @@ public sealed class PlayerKeybind
         ret.RemoveAll(p => p.HideConfig);
         return ret;
     }
+
+    private static Options.ControlSetup[] Controls => RWCustom.Custom.rainWorld.options.controls;
 
     /// <summary>Every keybind currently registered, including vanilla and modded keybinds.</summary>
     public static IReadOnlyList<PlayerKeybind> Keybinds() => keybindsReadonly;
@@ -197,103 +200,101 @@ public sealed class PlayerKeybind
     internal readonly bool axisPositive;
 
     /// <summary>True if the binding for <paramref name="playerNumber"/> is set.</summary>
-    public bool Bound(int playerNumber) => CurrentBinding(playerNumber) != KeyCode.None;
-    /// <summary>True if the binding for <paramref name="playerNumber"/> is not set.</summary>
-    public bool Unbound(int playerNumber) => CurrentBinding(playerNumber) == KeyCode.None;
+    public bool Bound(int playerNumber) => Controls[playerNumber].gameControlMap.ContainsAction(gameAction);
 
-    /// <summary>The current keycode configured for the given <paramref name="playerNumber"/> on keyboard.</summary>
+    /// <summary>True if the binding for <paramref name="playerNumber"/> is not set.</summary>
+    public bool Unbound(int playerNumber) => !Bound(playerNumber);
+
+    /// <summary>
+    /// The current keycode configured for the given <paramref name="playerNumber"/> on keyboard.
+    /// Returns None if the player is on controller or uses mouse for input.
+    /// </summary>
+    [Obsolete("IIC 2.0 does not use KeyCodes. This method is unreliable")]
     public KeyCode Keyboard(int playerNumber)
     {
         if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers) {
             throw new ArgumentOutOfRangeException(nameof(playerNumber));
         }
         if (this == Pause) playerNumber = 0;
-        return keyboard[playerNumber];
+        var cs = RWCustom.Custom.rainWorld.options.controls[playerNumber];
+        if (cs.gamePad)
+            return KeyCode.None;
+        return cs.KeyCodeFromAction(gameAction, 0);
     }
 
-    /// <summary>The current keycode configured for the given <paramref name="playerNumber"/> on a controller.</summary>
+    /// <summary>
+    /// The current keycode configured for the given <paramref name="playerNumber"/> on a controller.
+    /// Returns None if the player is on keyboard or using axis inputs.
+    /// </summary>
+    [Obsolete("IIC 2.0 does not use KeyCodes. This method is unreliable")]
     public KeyCode Gamepad(int playerNumber)
     {
-        if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers) {
+        if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers)
+        {
             throw new ArgumentOutOfRangeException(nameof(playerNumber));
         }
         if (this == Pause) playerNumber = 0;
-        return gamepad[playerNumber];
+        var cs = RWCustom.Custom.rainWorld.options.controls[playerNumber];
+        if (!cs.gamePad)
+            return KeyCode.None;
+        return cs.KeyCodeFromAction(gameAction, 0);
     }
 
     /// <summary>The current recognized keycode for the given <paramref name="playerNumber"/>.</summary>
+    [Obsolete("IIC 2.0 does not use KeyCodes. This method is unreliable")]
     public KeyCode CurrentBinding(int playerNumber)
     {
         if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers) {
             throw new ArgumentOutOfRangeException(nameof(playerNumber));
         }
         if (this == Pause) playerNumber = 0;
-        if (CustomInputExt.UsingGamepad(playerNumber)) {
-            return gamepad[playerNumber];
-        }
-        return keyboard[playerNumber];
+        
+        return RWCustom.Custom.rainWorld.options.controls[playerNumber].KeyCodeFromAction(gameAction, 0);
     }
 
-    // TODO REWRITE THIS CODE
     /// <summary>
     /// Checks if <see langword="this"/> for <paramref name="playerNumber"/> conflicts with <paramref name="other"/> for <paramref name="otherPlayerNumber"/>. This ignores <see cref="HideConflict"/>.
     /// </summary>
-    public bool ConflictsWith(int playerNumber, PlayerKeybind other, int otherPlayerNumber)
+    public bool ConflictsWith(int playerNumber, PlayerKeybind other, int otherPlayerNumber = -1)
     {
-        if (playerNumber == otherPlayerNumber && this == other) {
+        if (otherPlayerNumber == -1)
+            otherPlayerNumber = playerNumber;
+
+        if (playerNumber == otherPlayerNumber && this == other)
             return false;
-        }
+
         Options.ControlSetup[] controls = RWCustom.Custom.rainWorld.options.controls;
-        if (controls[playerNumber].controlPreference != controls[otherPlayerNumber].controlPreference) {
+        if (controls[playerNumber].controlPreference != controls[otherPlayerNumber].controlPreference)
             return false;
-        }
-        if (controls[playerNumber].UsingGamepad() && controls[otherPlayerNumber].UsingGamepad() && controls[playerNumber].gamePadNumber != controls[otherPlayerNumber].gamePadNumber) {
+        
+        if (controls[playerNumber].UsingGamepad() && controls[otherPlayerNumber].UsingGamepad() && controls[playerNumber].gamePadNumber != controls[otherPlayerNumber].gamePadNumber)
             return false;
-        }
-        if (CurrentBinding(playerNumber) == KeyCode.None) {
+
+        ActionElementMap aem1 = controls[playerNumber].GetActionElement(gameAction, 0, axisPositive);
+        int mouse1 = -1;
+        if (!controls[playerNumber].gamePad)
+            mouse1 = controls[playerNumber].GetMouseMapping(gameAction, axisPositive);
+            
+        if (aem1 == null && mouse1 == -1)
             return false;
-        }
-        return CurrentBinding(playerNumber) == other.CurrentBinding(otherPlayerNumber);
+
+        ActionElementMap aem2 = controls[otherPlayerNumber].GetActionElement(other.gameAction, 0, other.axisPositive);
+        int mouse2 = -1;
+        if (!controls[playerNumber].gamePad)
+            mouse2 = controls[otherPlayerNumber].GetMouseMapping(other.gameAction, other.axisPositive);
+
+        if (aem2 == null && mouse2 == -1)
+            return false;
+
+        return (mouse1 == mouse2 && mouse1 != -1) || aem1 != null && aem2 != null && aem1.CheckForAssignmentConflict(aem2);
     }
 
     internal bool VisiblyConflictsWith(int playerNumber, PlayerKeybind other, int otherPlayerNumber)
     {
         return ConflictsWith(playerNumber, other, otherPlayerNumber) && !(HideConflict?.Invoke(other) ?? false) && !(other.HideConflict?.Invoke(this) ?? false);
     }
-
-    // TODO REWRITE THIS
+    
     /// <summary>Checks if the key is currently being pressed by <paramref name="playerNumber"/>.</summary>
-    /*
-    public bool CheckRawPressed(int playerNumber)
-    {
-        // More or less copypasted from RWInput.PlayerInputPC
-        if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers) {
-            throw new ArgumentOutOfRangeException(nameof(playerNumber));
-        }
-        if (this == Pause) playerNumber = 0;
-
-        var rw = RWCustom.Custom.rainWorld;
-        var controller = RWInput.PlayerRecentController(playerNumber);
-        rw.options.controls[playerNumber].UpdateActiveController(controller, false);
-        var controllerType = rw.options.controls[playerNumber].GetActivePreset();
-
-        bool notMultiplayer = rw.processManager == null || !rw.processManager.IsGameInMultiplayerContext();
-        if (!notMultiplayer && controllerType == Options.ControlSetup.Preset.None) {
-            return false;
-        }
-
-        if (notMultiplayer && controllerType == Options.ControlSetup.Preset.None) {
-            controllerType = Options.ControlSetup.Preset.KeyboardSinglePlayer;
-        }
-
-        bool gamePad = controllerType != Options.ControlSetup.Preset.KeyboardSinglePlayer;
-        if (!gamePad) {
-            return Input.GetKey(keyboard[playerNumber]);
-        }
-
-        return CustomInputExt.ResolveButtonDown(gamepad[playerNumber], controller, controllerType);
-    }*/
-
     public bool CheckRawPressed(int playerNumber)
     {
         return RWCustom.Custom.rainWorld.options.controls[playerNumber].GetButton(gameAction);

@@ -114,41 +114,6 @@ sealed class InputSelectButton : SimpleButton
         return keybind.VisiblyConflictsWith(Player, keybind, otherPlayer);
     }
 
-    //TODO fix unbinding
-    public void InputAssigned()
-    {
-
-    }
-
-    [Obsolete]
-    public void InputAssigned(KeyCode keyCode)
-    {
-        string keyCodeString = keyCode.ToString();
-        if (keyCodeString.Length > 4 && keyCodeString.Substring(0, 5) == "Mouse") {
-            menu.PlaySound(SoundID.MENU_Error_Ping);
-        }
-        else if ((keyCodeString.Length > 7 && keyCodeString.Substring(0, 8) == "Joystick") != Gamepad) {
-            menu.PlaySound(SoundID.MENU_Error_Ping);
-        }
-        else {
-            if ((keyCode == KeyCode.Escape || keyCode == CurrentlyDisplayed()) && keybind.index != 0) {
-                menu.PlaySound(SoundID.MENU_Checkbox_Uncheck);
-
-                keyCode = KeyCode.None;
-            }
-            else {
-                menu.PlaySound(SoundID.MENU_Button_Successfully_Assigned);
-            }
-
-            if (Gamepad)
-                keybind.gamepad[Player] = keyCode;
-            else
-                keybind.keyboard[Player] = keyCode;
-        }
-
-        Flash();
-    }
-
     public void Flash()
     {
         RefreshKeyDisplay();
@@ -300,13 +265,6 @@ sealed class InputSelectButton : SimpleButton
                     Options.ControlSetup cs = menu.CurrentControlSetup;
                     ControllerMap cm = ((category == 0) ? cs.gameControlMap : cs.uiControlMap);
                     ActionElementMap ae = cs.GetActionElement(action, category, keybind.axisPositive);
-                    
-                    if (ae == null && action > 100)
-                    {
-                        Pole pole = keybind.axisPositive ? Pole.Positive : Pole.Negative;
-                        cm.CreateElementMap(action, pole, 0, ControllerElementType.Button, AxisRange.Full, false);
-                        ae = cs.GetActionElement(action, category, keybind.axisPositive);
-                    }
                     menu.mappingContexts[category] = new InputMapper.Context
                     {
                         actionId = action,
@@ -316,6 +274,11 @@ sealed class InputSelectButton : SimpleButton
                     };
                 }
             }
+
+            InputMenuHooks.remappingElementId = -1;
+            ActionElementMap aem = menu.CurrentControlSetup.GetActionElement(keybind.gameAction, 0, keybind.axisPositive);
+            if (aem != null)
+                InputMenuHooks.remappingElementId = aem.elementIdentifierId;
 
             menu.startListening = true;
             menu.PlaySound(SoundID.MENU_Button_Standard_Button_Pressed);

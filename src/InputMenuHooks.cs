@@ -16,6 +16,7 @@ namespace ImprovedInput
 {
     internal static class InputMenuHooks
     {
+        private static Options.ControlSetup[] Controls => RWCustom.Custom.rainWorld.options.controls;
         private static InputSelectButton[] keybindButtons;
 
         internal static void InitHooks()
@@ -23,8 +24,7 @@ namespace ImprovedInput
             // Input Settings Menu
             IL.Menu.InputOptionsMenu.ctor += AddCustomButtonsIL;
             On.Menu.InputOptionsMenu.ctor += FixVanillaButtons;
-            //On.Menu.InputOptionsMenu.Update += InputOptionsMenu_Update; // TODO remove this
-            IL.Menu.InputOptionsMenu.Update += FixSelectedObjectIL;
+            IL.Menu.InputOptionsMenu.Update += FixUpdateIL;
             On.Menu.InputOptionsMenu.SetCurrentlySelectedOfSeries += FixSelection;
             On.Menu.InputOptionsMenu.RefreshInputGreyOut += RefreshButtons;
             On.Menu.InputOptionsMenu.UpdateInfoText += InputOptionsMenu_UpdateInfoText;
@@ -89,7 +89,7 @@ namespace ImprovedInput
             }
 
             ActionElementMap actionElementMap = controlSetup.GetActionElement(keybind.gameAction, 0, keybind.axisPositive);
-            string buttonName = "???";
+            string buttonName = "None"; // TODO change to "None" or "-"
             if (actionElementMap != null)
             {
                 buttonName = actionElementMap.elementIdentifierName;
@@ -261,14 +261,13 @@ namespace ImprovedInput
             }
         }
 
-        // purely to fix an index out of range error with the vanilla InputSelectButtons. They don't exist, so it errors when it tries to access them.
-        private static void FixSelectedObjectIL(ILContext il)
+        private static void FixUpdateIL(ILContext il)
         {
             ILCursor c = new(il);
             try
             {
                 // selectedObject = ((settingInput.Value.x == KEYBOARD_ASSIGNMENT) ? keyBoardKeysButtons[settingInput.Value.y] : gamePadButtonButtons[settingInput.Value.y]);
-                // errors because those button arrays are empty
+                // fixes an index out of range error when accessing the vanilla InputSelectButtons. They don't exist, so we replace it with our own fuction.
                 c.GotoNext(
                     i => i.MatchLdarg(0),
                     i => i.MatchLdarg(0),
@@ -284,29 +283,121 @@ namespace ImprovedInput
 
                 c.Emit(OpCodes.Ldarg_0);
                 c.EmitDelegate(FixSelectedObject);
+
+                // mouse button assignment 
+                c.GotoNext(
+                    i => i.MatchLdloc(3),
+                    i => i.MatchLdcI4(0)
+                    );
+                start = c.Index + 3;
+                c.GotoNext(
+                    i => i.MatchLdarg(0),
+                    i => i.MatchCall(AccessTools.Method(typeof(InputOptionsMenu), "StopInputAssignment"))
+                    );
+                end = c.Index;
+                c.Goto(start);
+                c.RemoveRange(end - start);
+
+                c.Emit(OpCodes.Ldarg_0);
+                c.Emit(OpCodes.Ldloc_3);
+                c.EmitDelegate(FixMouseMapping);
+
+                // input mapper assignment
+                c.GotoNext(
+                    i => i.MatchLdarg(0),
+                    i => i.MatchLdsfld(AccessTools.Field(typeof(SoundID), "MENU_Button_Successfully_Assigned"))
+                    );
+                start = c.Index;
+                c.GotoNext(
+                    i => i.MatchLdarg(0),
+                    i => i.MatchCall(AccessTools.Method(typeof(InputOptionsMenu), "StopInputAssignment"))
+                    );
+                end = c.Index;
+                c.Goto(start);
+                c.RemoveRange(end - start);
+
+                c.Emit(OpCodes.Ldarg_0);
+                c.EmitDelegate(FixInputMapping);
             }
             catch (KeyNotFoundException ex) 
             {
-                Plugin.Logger.LogError("Failed to fix selected object il");
+                Plugin.Logger.LogError("Failed to patch InputOptionsMenu.Update");
             }
         }
-
+         
         // part 2: Replaced access with the appropriate modded InputSelectButton
         private static void FixSelectedObject(InputOptionsMenu self)
         {
             self.selectedObject = keybindButtons[self.settingInput.Value.y];
         }
 
+        private static void FixMouseMapping(InputOptionsMenu self, int mouseIndex)
+        {
+            InputMapper.Context[] mc = self.mappingContexts;
+            Options options = self.manager.rainWorld.options;
+            Options.ControlSetup cs = options.controls[options.playerToSetInputFor];
+
+            // unbinding if reassigning same value
+            string key = mc[0].actionId + "," + ((mc[0].actionRange == AxisRange.Positive) ? "1" : "0");
+            if (cs.mouseButtonMappings.ContainsKey(key) && cs.mouseButtonMappings[key] == mouseIndex)
+            {
+                mouseIndex = -1;
+                self.PlaySound(SoundID.MENU_Checkbox_Uncheck);
+            }
+            else
+                self.PlaySound(SoundID.MENU_Button_Successfully_Assigned);
+
+            // vanilla code
+            for (int l = 0; l < mc.Length; l++)
+            {
+                if (mc[l] != null)
+                {
+                    Pole axisContribution = ((mc[l].actionRange != AxisRange.Positive) ? Pole.Negative : Pole.Positive);
+                    string text = ((mc[l].actionRange == AxisRange.Positive) ? "1" : "0");
+                    if (mc[l].actionElementMapToReplace != null)
+                        mc[l].controllerMap.DeleteElementMap(mc[l].actionElementMapToReplace.id);
+                        //mc[l].controllerMap.ReplaceElementMap(mc[l].actionElementMapToReplace.id, mc[l].actionId, axisContribution, KeyCode.None, ModifierKeyFlags.None, out var _);
+                    cs.mouseButtonMappings[mc[l].actionId + "," + text] = mouseIndex;
+                }
+            }
+        }
+
+        internal static int remappingElementId;
+        private static void FixInputMapping(InputOptionsMenu self)
+        {
+            InputMapper.Context[] mc = self.mappingContexts;
+            Options options = self.manager.rainWorld.options;
+            Options.ControlSetup cs = options.controls[options.playerToSetInputFor];
+
+            ActionElementMap aem = cs.GetActionElement(mc[0].actionId, 0, (mc[0].actionRange == AxisRange.Positive) ? true : false);
+            if (remappingElementId == aem.elementIdentifierId)
+            {
+                self.PlaySound(SoundID.MENU_Checkbox_Uncheck);
+                cs.gameControlMap.DeleteElementMap(aem.id);
+                aem = cs.GetActionElement(mc[0].actionId, 1, (mc[0].actionRange == AxisRange.Positive) ? true : false);
+                if (aem != null)
+                    cs.uiControlMap.DeleteElementMap(aem.id);
+            }
+            else
+            {
+                self.PlaySound(SoundID.MENU_Button_Successfully_Assigned);
+                for (int m = 0; m < mc.Length; m++)
+                {
+                    if (mc[m] != null)
+                    {
+                        string text2 = ((mc[m].actionRange == AxisRange.Positive) ? "1" : "0");
+                        cs.mouseButtonMappings[mc[m].actionId + "," + text2] = -1;
+                    }
+                }
+            }
+        }
+
         private static void FixSelection(On.Menu.InputOptionsMenu.orig_SetCurrentlySelectedOfSeries orig, InputOptionsMenu self, string series, int to)
         {
-            orig(self, series, to);
+            if (series == "DeviceButtons" && to == 0)
+                to = 1;
 
-            if (series == "DeviceButtons" && to != 1)
-            {
-                self.CurrentControlSetup.gamePadGuid = null;
-                self.CurrentControlSetup.gamePadNumber = to - 2;
-                self.CurrentControlSetup.UpdateControlPreference(Options.ControlSetup.ControlToUse.SPECIFIC_GAMEPAD, false);
-            }
+            orig(self, series, to);
         }
 
         private static void RefreshButtons(On.Menu.InputOptionsMenu.orig_RefreshInputGreyOut orig, InputOptionsMenu self)
@@ -401,11 +492,13 @@ namespace ImprovedInput
                 if (btn.buttonIndex >= PlayerKeybind.keybinds.Count)
                     return;
 
+                PlayerKeybind kb = PlayerKeybind.keybinds[btn.buttonIndex];
+
                 if (btn.buttonIndex is not 6 and not 7 and not 8 and not 9)
                 {
-                    btn.pressed = PlayerKeybind.keybinds[btn.buttonIndex].CheckRawPressed(self.playerIndex);
+                    btn.pressed = kb.CheckRawPressed(self.playerIndex);
                 }
-                btn.playerAssignedToAnything = self.playerAssignedToAnything && CustomInputExt.ButtonText(self.playerIndex, PlayerKeybind.keybinds[btn.buttonIndex].CurrentBinding(btn.playerIndex), out _) != "None";
+                btn.playerAssignedToAnything = self.playerAssignedToAnything && (kb.Bound(self.playerIndex) || Controls[self.playerIndex].GetMouseMapping(kb.gameAction, kb.axisPositive) != -1);
             }
         }
 
@@ -418,9 +511,9 @@ namespace ImprovedInput
                     continue;
                 }
 
-                string text = CustomInputExt.ButtonText(self.playerIndex, PlayerKeybind.keybinds[btn.buttonIndex].CurrentBinding(btn.playerIndex), out _);
+                string text = (self.menu as InputOptionsMenu).ButtonText(self.playerIndex, PlayerKeybind.keybinds[btn.buttonIndex], true, out _);
 
-                if (text == "None" || text == "< N / A >")
+                if (text == "None" || text == "< N / A >" || text == "-" || text == "???")
                 {
                     btn.menuLabel.text = btn.labelText;
                 }
@@ -454,7 +547,5 @@ namespace ImprovedInput
             if (self.holder.active)
                 self.holdButton.held = RWInput.CheckPauseButton(0);
         }
-
-
     }
 }
