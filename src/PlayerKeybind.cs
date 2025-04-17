@@ -27,27 +27,27 @@ public sealed class PlayerKeybind
     // Don't move these. The indices matter.
 
     /// <summary>The PAUSE button. Usually ignored for anyone but the first player.</summary>
-    public static readonly PlayerKeybind Pause = Register("vanilla:pause", "Vanilla", "Pause", KeyCode.Escape, KeyCode.JoystickButton9, KeyCode.JoystickButton6);
+    public static readonly PlayerKeybind Pause = Register("vanilla:pause", "Vanilla", "Pause", 5);
 
-    /// <summary>The MAP button.</summary>
-    public static readonly PlayerKeybind Map = Register("vanilla:map", "Vanilla", "Map", KeyCode.Space, KeyCode.JoystickButton5, KeyCode.JoystickButton5);
     /// <summary>The GRAB button.</summary>
-    public static readonly PlayerKeybind Grab = Register("vanilla:grab", "Vanilla", "Grab", KeyCode.LeftShift, KeyCode.JoystickButton0, KeyCode.JoystickButton2);
+    public static readonly PlayerKeybind Grab = Register("vanilla:grab", "Vanilla", "Grab", 3);
     /// <summary>The JUMP button.</summary>
-    public static readonly PlayerKeybind Jump = Register("vanilla:jump", "Vanilla", "Jump", KeyCode.Z, KeyCode.JoystickButton1, KeyCode.JoystickButton0);
+    public static readonly PlayerKeybind Jump = Register("vanilla:jump", "Vanilla", "Jump", 0, 8);
     /// <summary>The THROW button.</summary>
-    public static readonly PlayerKeybind Throw = Register("vanilla:throw", "Vanilla", "Throw", KeyCode.X, KeyCode.JoystickButton2, KeyCode.JoystickButton1);
+    public static readonly PlayerKeybind Throw = Register("vanilla:throw", "Vanilla", "Throw", 4, 9);
     /// <summary>The SPECIAL button.</summary>
-    public static readonly PlayerKeybind Special = Register("vanilla:special", "Vanilla", "Special", KeyCode.C, KeyCode.JoystickButton3, KeyCode.JoystickButton3);
+    public static readonly PlayerKeybind Special = Register("vanilla:special", "Vanilla", "Special", 34);
+    /// <summary>The MAP button.</summary>
+    public static readonly PlayerKeybind Map = Register("vanilla:map", "Vanilla", "Map", 11);
 
-    /// <summary>The UP button. Ignored for controllers.</summary>
-    public static readonly PlayerKeybind Up = Register("vanilla:up", "Vanilla", "Up", KeyCode.UpArrow, KeyCode.None);
-    /// <summary>The UP button. Ignored for controllers.</summary>
-    public static readonly PlayerKeybind Left = Register("vanilla:left", "Vanilla", "Left", KeyCode.LeftArrow, KeyCode.None);
-    /// <summary>The UP button. Ignored for controllers.</summary>
-    public static readonly PlayerKeybind Down = Register("vanilla:down", "Vanilla", "Down", KeyCode.DownArrow, KeyCode.None);
-    /// <summary>The UP button. Ignored for controllers.</summary>
-    public static readonly PlayerKeybind Right = Register("vanilla:right", "Vanilla", "Right", KeyCode.RightArrow, KeyCode.None);
+    /// <summary>The UP button. Unconfigurable for controllers.</summary>
+    public static readonly PlayerKeybind Up = Register("vanilla:up", "Vanilla", "Up", 1, 6, true);
+    /// <summary>The LEFT button. Unconfigurable for controllers.</summary>
+    public static readonly PlayerKeybind Left = Register("vanilla:left", "Vanilla", "Left", 2, 7);
+    /// <summary>The DOWN button. Unconfigurable for controllers.</summary>
+    public static readonly PlayerKeybind Down = Register("vanilla:down", "Vanilla", "Down", 1, 6);
+    /// <summary>The RIGHT button. Unconfigurable for controllers.</summary>
+    public static readonly PlayerKeybind Right = Register("vanilla:right", "Vanilla", "Right", 2, 7, true);
 
     /// <summary>
     /// Registers a new keybind.
@@ -59,9 +59,10 @@ public sealed class PlayerKeybind
     /// <param name="gamepadPreset">The default value for controllers.</param>
     /// <returns>A new <see cref="PlayerKeybind"/> to be used like <c>player.JustPressed(keybind)</c>.</returns>
     /// <exception cref="ArgumentException">The <paramref name="id"/> is invalid or already taken.</exception>
+    [Obsolete("Keycodes are no longer supported. They will be ignored")]
     public static PlayerKeybind Register(string id, string mod, string name, KeyCode keyboardPreset, KeyCode gamepadPreset)
     {
-        return Register(id, mod, name, keyboardPreset, gamepadPreset, gamepadPreset);
+        return Register(id, mod, name);
     }
 
     /// <summary>
@@ -75,13 +76,33 @@ public sealed class PlayerKeybind
     /// <param name="xboxPreset">The default value for Xbox controllers.</param>
     /// <returns>A new <see cref="PlayerKeybind"/> to be used like <c>player.JustPressed(keybind)</c>.</returns>
     /// <exception cref="ArgumentException">The <paramref name="id"/> is invalid or already taken.</exception>
+    [Obsolete("Keycodes are no longer supported. They will be ignored")]
     public static PlayerKeybind Register(string id, string mod, string name, KeyCode keyboardPreset, KeyCode gamepadPreset, KeyCode xboxPreset)
     {
+        return Register(id, mod, name);
+    }
+
+    private static int actionIdCounter = 35;
+
+    /// <summary>
+    /// Registers a new keybind.
+    /// </summary>
+    /// <param name="id">The unique ID for the keybind.</param>
+    /// <param name="mod">The display name of the mod that registered this keybind.</param>
+    /// <param name="name">A short name to show in the Input Settings screen.</param>
+    /// <returns>A new <see cref="PlayerKeybind"/> to be used like <c>player.JustPressed(keybind)</c>.</returns>
+    /// <exception cref="ArgumentException">The <paramref name="id"/> is invalid or already taken.</exception>
+    public static PlayerKeybind Register(string id, string mod, string name)
+    {
+        return Register(id, mod, name, actionIdCounter++);
+    }
+
+    private static PlayerKeybind Register(string id, string mod, string name, int gameAction, int uiAction = -1, bool invert = false)
+    {
         Validate(id, mod, name);
-        keybinds.Add(new(id, mod, name, keyboardPreset, gamepadPreset, xboxPreset == KeyCode.None ? gamepadPreset : xboxPreset) {
-            index = keybinds.Count
-        });
-        return keybinds.Last();
+        PlayerKeybind k = new(id, mod, name, gameAction, uiAction, invert) { index = keybinds.Count };
+        keybinds.Add(k);
+        return k;
     }
 
     private static void Validate(string id, string mod, string name)
@@ -111,21 +132,27 @@ public sealed class PlayerKeybind
     /// <returns>The keybind, or <see langword="null"/> if none was found.</returns>
     public static PlayerKeybind Get(string id) => keybinds.FirstOrDefault(k => k.Id == id);
 
-    internal PlayerKeybind(string id, string mod, string name, KeyCode keyboardDefault, KeyCode gamepadDefault, KeyCode xboxDefault)
+    private PlayerKeybind(string id, string mod, string name, int gameAction, int uiAction, bool invert)
     {
         Id = id;
         Mod = mod;
         Name = name;
-        KeyboardPreset = keyboardDefault;
-        GamepadPreset = gamepadDefault;
-        XboxPreset = xboxDefault;
+
+        this.gameAction = gameAction;
+        this.uiAction = uiAction;
+        this.axisPositive = !invert;
+
+        //TODO delete obsolete code 
+        KeyboardPreset = KeyCode.None;
+        GamepadPreset = KeyCode.None;
+        XboxPreset = KeyCode.None;
 
         keyboard = new KeyCode[CustomInputExt.maxMaxPlayers];
         gamepad = new KeyCode[CustomInputExt.maxMaxPlayers];
-
-        for (int i = 0; i < CustomInputExt.maxMaxPlayers; i++) {
-            keyboard[i] = keyboardDefault;
-            gamepad[i] = gamepadDefault;
+        for (int i = 0; i < CustomInputExt.maxMaxPlayers; i++)
+        {
+            keyboard[i] = KeyCode.None;
+            gamepad[i] = KeyCode.None;
         }
     }
 
@@ -138,10 +165,13 @@ public sealed class PlayerKeybind
     /// <summary>The display name of the keybind.</summary>
     public string Name { get; }
     /// <summary>The default value for keyboards.</summary>
+    [Obsolete]
     public KeyCode KeyboardPreset { get; }
     /// <summary>The default value for PlayStation, Switch Pro, and other controllers.</summary>
+    [Obsolete]
     public KeyCode GamepadPreset { get; }
     /// <summary>The default value for Xbox controllers.</summary>
+    [Obsolete]
     public KeyCode XboxPreset { get; }
 
     /// <summary>A longer description to show at the bottom of the screen when configuring the keybind.</summary>
@@ -157,8 +187,14 @@ public sealed class PlayerKeybind
     /// <remarks>May be null.</remarks>
     public Func<PlayerKeybind, bool> HideConflict { get; set; }
 
+    [Obsolete]
     internal readonly KeyCode[] keyboard;
+    [Obsolete]
     internal readonly KeyCode[] gamepad;
+
+    internal readonly int gameAction;
+    internal readonly int uiAction;
+    internal readonly bool axisPositive;
 
     /// <summary>True if the binding for <paramref name="playerNumber"/> is set.</summary>
     public bool Bound(int playerNumber) => CurrentBinding(playerNumber) != KeyCode.None;
@@ -198,6 +234,7 @@ public sealed class PlayerKeybind
         return keyboard[playerNumber];
     }
 
+    // TODO REWRITE THIS CODE
     /// <summary>
     /// Checks if <see langword="this"/> for <paramref name="playerNumber"/> conflicts with <paramref name="other"/> for <paramref name="otherPlayerNumber"/>. This ignores <see cref="HideConflict"/>.
     /// </summary>
@@ -224,7 +261,9 @@ public sealed class PlayerKeybind
         return ConflictsWith(playerNumber, other, otherPlayerNumber) && !(HideConflict?.Invoke(other) ?? false) && !(other.HideConflict?.Invoke(this) ?? false);
     }
 
+    // TODO REWRITE THIS
     /// <summary>Checks if the key is currently being pressed by <paramref name="playerNumber"/>.</summary>
+    /*
     public bool CheckRawPressed(int playerNumber)
     {
         // More or less copypasted from RWInput.PlayerInputPC
@@ -253,6 +292,11 @@ public sealed class PlayerKeybind
         }
 
         return CustomInputExt.ResolveButtonDown(gamepad[playerNumber], controller, controllerType);
+    }*/
+
+    public bool CheckRawPressed(int playerNumber)
+    {
+        return RWCustom.Custom.rainWorld.options.controls[playerNumber].GetButton(gameAction);
     }
 
     /// <summary>

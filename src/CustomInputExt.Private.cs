@@ -9,6 +9,7 @@ namespace ImprovedInput;
 
 public static partial class CustomInputExt
 {
+    [Obsolete]
     internal static KeyCode ActionToKeyCode(int playerNumber, int actionId, bool positive)
     {
         // See RewiredConsts.Action
@@ -28,6 +29,7 @@ public static partial class CustomInputExt
         };
     }
 
+    [Obsolete]
     internal static string ButtonText(int player, KeyCode keyCode, out Color? color)
     {
         color = null;
@@ -43,6 +45,7 @@ public static partial class CustomInputExt
         }
         return text;
     }
+    [Obsolete]
     static string ControllerButtonName(int player, int joystickButton, out Color? color)
     {
         // Thank the internet honestly. It's not like I knew these mappings before googling them
@@ -81,8 +84,8 @@ public static partial class CustomInputExt
                 _ => null
             };
             return joystickButton switch {
-                0 => "X",
-                1 => "O",
+                0 => "Cross",
+                1 => "Circle",
                 2 => "Square",
                 3 => "Triangle",
                 4 => "L1",
@@ -150,6 +153,7 @@ public static partial class CustomInputExt
         return ret;
     }
 
+    [Obsolete]
     internal static bool ResolveButtonDown(KeyCode kc, Controller controller, Options.ControlSetup.Preset preset)
     {
         // This commented code fails with the warning "The Action {buttonName} does not exist. You can create Actions in the editor."
@@ -209,6 +213,7 @@ public static partial class CustomInputExt
         }
         return controller.GetButton(btn);
     }
+    [Obsolete]
     internal static float ResolveAxis(bool horizontal, Rewired.Player player, Controller controller, Options.ControlSetup.Preset preset)
     {
         if (controller == null) {
