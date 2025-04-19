@@ -7,9 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="../lib/*.dll">
+    <Reference Include="../lib/*.dll" Publicize="true">
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2" PrivateAssets="all" />
+    </ItemGroup>
 
 </Project>

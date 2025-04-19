@@ -12,13 +12,6 @@ namespace ImprovedInput;
 /// </summary>
 public sealed class PlayerKeybind
 {
-    internal static List<PlayerKeybind> GuiKeybinds()
-    {
-        List<PlayerKeybind> ret = new(keybinds);
-        ret.RemoveAll(p => p.HideConfig);
-        return ret;
-    }
-
     private static Options.ControlSetup[] Controls => RWCustom.Custom.rainWorld.options.controls;
 
     /// <summary>Every keybind currently registered, including vanilla and modded keybinds.</summary>
@@ -27,7 +20,22 @@ public sealed class PlayerKeybind
     internal static readonly List<PlayerKeybind> keybinds = new();
     internal static readonly ReadOnlyCollection<PlayerKeybind> keybindsReadonly = new(keybinds);
 
-    // Don't move these. The indices matter.
+    internal static List<PlayerKeybind> GuiKeybinds()
+    {
+        List<PlayerKeybind> ret = new(keybinds);
+        ret.RemoveAll(p => p.HideConfig);
+        return ret;
+    }
+
+    /// <summary>
+    /// Gets a keybind given its <paramref name="id"/>.
+    /// </summary>
+    /// <returns>The keybind, or <see langword="null"/> if none was found.</returns>
+    public static PlayerKeybind Get(string id) => keybinds.FirstOrDefault(k => k.Id == id);
+
+    internal static PlayerKeybind Get(int gameAction) => keybinds.FirstOrDefault(k => k.gameAction == gameAction);
+
+    // Don't move these. The indices matter for the input menu.
 
     /// <summary>The PAUSE button. Usually ignored for anyone but the first player.</summary>
     public static readonly PlayerKeybind Pause = Register("vanilla:pause", "Vanilla", "Pause", 5);
@@ -85,8 +93,6 @@ public sealed class PlayerKeybind
         return Register(id, mod, name);
     }
 
-    private static int actionIdCounter = 35;
-
     /// <summary>
     /// Registers a new keybind.
     /// </summary>
@@ -97,12 +103,15 @@ public sealed class PlayerKeybind
     /// <exception cref="ArgumentException">The <paramref name="id"/> is invalid or already taken.</exception>
     public static PlayerKeybind Register(string id, string mod, string name)
     {
-        return Register(id, mod, name, actionIdCounter++);
+        Validate(id, mod, name);
+        PlayerKeybind k = Register(id, mod, name, -1);
+        if (Plugin.initModdedActions)
+            k.gameAction = actionIdCounter++;
+        return k;
     }
 
     private static PlayerKeybind Register(string id, string mod, string name, int gameAction, int uiAction = -1, bool invert = false)
     {
-        Validate(id, mod, name);
         PlayerKeybind k = new(id, mod, name, gameAction, uiAction, invert) { index = keybinds.Count };
         keybinds.Add(k);
         return k;
@@ -129,11 +138,15 @@ public sealed class PlayerKeybind
         }
     }
 
-    /// <summary>
-    /// Gets a keybind given its <paramref name="id"/>.
-    /// </summary>
-    /// <returns>The keybind, or <see langword="null"/> if none was found.</returns>
-    public static PlayerKeybind Get(string id) => keybinds.FirstOrDefault(k => k.Id == id);
+    private static int actionIdCounter = 0;
+    internal static void addActionIds()
+    {
+        actionIdCounter = Plugin.highestVanillaActionId + 1;
+
+        foreach (PlayerKeybind k in keybinds)
+            if (k.gameAction == -1)
+                k.gameAction = actionIdCounter++;
+    }
 
     private PlayerKeybind(string id, string mod, string name, int gameAction, int uiAction, bool invert)
     {
@@ -145,18 +158,8 @@ public sealed class PlayerKeybind
         this.uiAction = uiAction;
         this.axisPositive = !invert;
 
-        //TODO delete obsolete code 
+        //Rewrite preset code
         KeyboardPreset = KeyCode.None;
-        GamepadPreset = KeyCode.None;
-        XboxPreset = KeyCode.None;
-
-        keyboard = new KeyCode[CustomInputExt.maxMaxPlayers];
-        gamepad = new KeyCode[CustomInputExt.maxMaxPlayers];
-        for (int i = 0; i < CustomInputExt.maxMaxPlayers; i++)
-        {
-            keyboard[i] = KeyCode.None;
-            gamepad[i] = KeyCode.None;
-        }
     }
 
     internal int index = -1;
@@ -169,13 +172,13 @@ public sealed class PlayerKeybind
     public string Name { get; }
     /// <summary>The default value for keyboards.</summary>
     [Obsolete]
-    public KeyCode KeyboardPreset { get; }
+    public KeyCode KeyboardPreset { get; } = KeyCode.None;
     /// <summary>The default value for PlayStation, Switch Pro, and other controllers.</summary>
     [Obsolete]
-    public KeyCode GamepadPreset { get; }
+    public KeyCode GamepadPreset { get; } = KeyCode.None;
     /// <summary>The default value for Xbox controllers.</summary>
     [Obsolete]
-    public KeyCode XboxPreset { get; }
+    public KeyCode XboxPreset { get; } = KeyCode.None;
 
     /// <summary>A longer description to show at the bottom of the screen when configuring the keybind.</summary>
     public string Description { get; set; }
@@ -190,14 +193,9 @@ public sealed class PlayerKeybind
     /// <remarks>May be null.</remarks>
     public Func<PlayerKeybind, bool> HideConflict { get; set; }
 
-    [Obsolete]
-    internal readonly KeyCode[] keyboard;
-    [Obsolete]
-    internal readonly KeyCode[] gamepad;
-
-    internal readonly int gameAction;
-    internal readonly int uiAction;
-    internal readonly bool axisPositive;
+    internal int gameAction = -1;
+    internal int uiAction = -1;
+    internal bool axisPositive = true;
 
     /// <summary>True if the binding for <paramref name="playerNumber"/> is set.</summary>
     public bool Bound(int playerNumber) => Controls[playerNumber].gameControlMap.ContainsAction(gameAction);

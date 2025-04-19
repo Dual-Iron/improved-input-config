@@ -1,7 +1,6 @@
 ﻿using Menu;
 using Rewired;
 using RWCustom;
-using System;
 using System.Text.RegularExpressions;
 using UnityEngine;
 

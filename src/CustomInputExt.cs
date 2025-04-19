@@ -5,7 +5,7 @@ namespace ImprovedInput;
 /// <summary>
 /// Extends the functionality of the vanilla input system.
 /// </summary>
-public static partial class CustomInputExt
+public static class CustomInputExt
 {
     internal const int maxMaxPlayers = 16;
     internal static int maxPlayers = RainWorld.PlayerObjectBodyColors.Length;

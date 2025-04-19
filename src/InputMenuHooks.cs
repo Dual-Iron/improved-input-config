@@ -2,9 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using UnityEngine;
 using Menu;
 using Mono.Cecil.Cil;
@@ -322,6 +320,7 @@ namespace ImprovedInput
             catch (KeyNotFoundException ex) 
             {
                 Plugin.Logger.LogError("Failed to patch InputOptionsMenu.Update");
+                Debug.LogError(ex.Message);
             }
         }
          
