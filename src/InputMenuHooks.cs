@@ -355,7 +355,6 @@ namespace ImprovedInput
                     string text = ((mc[l].actionRange == AxisRange.Positive) ? "1" : "0");
                     if (mc[l].actionElementMapToReplace != null)
                         mc[l].controllerMap.DeleteElementMap(mc[l].actionElementMapToReplace.id);
-                        //mc[l].controllerMap.ReplaceElementMap(mc[l].actionElementMapToReplace.id, mc[l].actionId, axisContribution, KeyCode.None, ModifierKeyFlags.None, out var _);
                     cs.mouseButtonMappings[mc[l].actionId + "," + text] = mouseIndex;
                 }
             }

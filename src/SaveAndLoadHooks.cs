@@ -7,6 +7,10 @@ using System.Collections.Generic;
 using SerializedObject = Rewired.Utils.Classes.Data.SerializedObject;
 using RewiredUserDataStore = Rewired.Data.RewiredUserDataStore;
 using UnityEngine;
+using MonoMod.Cil;
+using Mono.Cecil.Cil;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace ImprovedInput
 {
@@ -22,6 +26,10 @@ namespace ImprovedInput
             // saving and loading modded actions
             new Hook(AccessTools.Method(typeof(RewiredUserDataStore), "SaveControllerMap", new Type[2] { typeof(Rewired.Player), typeof(ControllerMap)}), RewiredUserDataStore_SaveControllerMap_Hook);
             new Hook(AccessTools.Method(typeof(RewiredUserDataStore), "LoadControllerMap", new Type[4] { typeof(Rewired.Player), typeof(ControllerIdentifier), typeof(int), typeof(int) }), RewiredUserDataStore_LoadControllerMap_Hook);
+
+            On.Options.ControlSetup.ToString += ControlSetup_ToString;
+            On.Options.ControlSetup.FromString += ControlSetup_FromString;
+            IL.Options.ControlSetup.ToString += ControlSetup_ToStringIL;
         }
 
         // Preventing Rewired from saving modded actions
@@ -201,6 +209,130 @@ namespace ImprovedInput
                 Debug.LogException(e);
             }
             return map;
+        }
+
+        private static void ControlSetup_ToStringIL(ILContext il)
+        {
+            ILCursor c = new(il);
+            try
+            {
+                c.GotoNext(
+                    i => i.MatchLdcI4(5)
+                    );
+                int start = c.Index;
+                c.GotoNext(
+                    i => i.MatchStloc(0)
+                    );
+                int end = c.Index + 1;
+                c.Goto(start);
+                c.RemoveRange(end - start);
+
+                c.Emit(OpCodes.Ldloc_0);
+                c.Emit(OpCodes.Ldloc_2);
+                c.EmitDelegate(ControlSetup_WriteMouseButtonMapping);
+                c.Emit(OpCodes.Stloc_0);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger.LogError("Failed to patch ControlSetup_ToString");
+                Plugin.Logger.LogError(ex.Message);
+            }
+        }
+
+        private static List<string> moddedMouseMappings;
+        private static Dictionary<Options.ControlSetup, string[]> unknownMouseButtonMappings = new Dictionary<Options.ControlSetup, string[]>();
+
+        private static string ControlSetup_WriteMouseButtonMapping(string text, KeyValuePair<string, int> mapping)
+        {
+            string[] key = mapping.Key.Split(',');
+            int actionId = int.Parse(key[0]);
+            bool axisPositive = key[1] == "1";
+            PlayerKeybind keybind = PlayerKeybind.Get(actionId, axisPositive);
+            if (keybind == null)
+                return text;
+
+            if (keybind.IsVanilla)
+                return text + mapping.Key + ":" + mapping.Value + "<ctrlB>";
+
+            moddedMouseMappings.Add(keybind.Id + "|" + mapping.Value);
+            return text;
+        }
+
+        private static string ControlSetup_ToString(On.Options.ControlSetup.orig_ToString orig, Options.ControlSetup self)
+        {
+            moddedMouseMappings = new List<string>();
+
+            string text = orig(self);
+
+            if (unknownMouseButtonMappings.ContainsKey(self))
+                moddedMouseMappings.AddRange(unknownMouseButtonMappings[self]);
+            if (moddedMouseMappings.Count > 0)
+            {
+                Plugin.Logger.LogInfo("saving iic mouse maps for player: " + self.player.name);
+                string iicMouseMap = "iic:mousemaps" + "<ctrlB>" + version + "<ctrlB>" + string.Join("<ctrlB>", moddedMouseMappings);
+                Plugin.Logger.LogInfo("maps: " + iicMouseMap);
+                text += "<ctrlA>" + iicMouseMap;
+            }
+            return text;
+        }
+
+        private static void ControlSetup_FromString(On.Options.ControlSetup.orig_FromString orig, Options.ControlSetup self, string s)
+        {
+            orig(self, s);
+
+            if (self.unrecognizedControlAttrs == null || self.unrecognizedControlAttrs.Length == 0)
+                return;
+
+            string iicMapString = null;
+            List<string> attributes = self.unrecognizedControlAttrs.ToList();
+
+            for (int i = attributes.Count - 1; i >= 0; i--)
+                if (attributes[i].StartsWith("iic:mousemaps"))
+                {
+                    if (iicMapString == null)
+                        iicMapString = attributes[i];
+                    attributes.RemoveAt(i);
+                }
+            if (iicMapString == null)
+                return;
+
+            self.unrecognizedControlAttrs = attributes.ToArray();
+            if (self.unrecognizedControlAttrs.Length == 0)
+                self.unrecognizedControlAttrs = null;
+
+            try
+            {
+                Plugin.Logger.LogInfo("loading iic mouse maps for player: " + self.player.name);
+                Plugin.Logger.LogInfo("maps: " + iicMapString);
+                string[] map = Regex.Split(iicMapString, "<ctrlB>");
+                if (map[1] != version)
+                    return;
+
+                List<string> unknowns = new List<string>();
+                for (int i = 2; i < map.Length; i++)
+                {
+                    string[] mapping = map[i].Split('|');
+                    PlayerKeybind keybind = PlayerKeybind.Get(mapping[0]);
+                    if (keybind != null)
+                    {
+                        string key = keybind.gameAction + "," + (keybind.axisPositive ? "1" : "0");
+                        self.mouseButtonMappings[key] = int.Parse(mapping[1]);
+                    }
+                    else
+                    {
+                        unknowns.Add(map[i]);
+                    }
+                }
+
+                unknownMouseButtonMappings.Remove(self);
+                if (unknowns.Count > 0)
+                    unknownMouseButtonMappings.Add(self, unknowns.ToArray());
+            }
+            catch (Exception ex) 
+            {
+                Plugin.Logger.LogError("Failed to parse control setup for player: " + self.player.name);
+                Plugin.Logger.LogError(ex.Message);
+            }
         }
     }
 }

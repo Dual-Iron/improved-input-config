@@ -33,7 +33,16 @@ public sealed class PlayerKeybind
     /// <returns>The keybind, or <see langword="null"/> if none was found.</returns>
     public static PlayerKeybind Get(string id) => keybinds.FirstOrDefault(k => k.Id == id);
 
-    internal static PlayerKeybind Get(int gameAction) => keybinds.FirstOrDefault(k => k.gameAction == gameAction);
+    internal static PlayerKeybind Get(int actionId, bool axisPositive)
+    {
+        if (actionId == -1) return null;
+
+        foreach (PlayerKeybind keybind in keybinds)
+            if ((keybind.gameAction == actionId || keybind.uiAction == actionId) && keybind.axisPositive == axisPositive)
+                return keybind;
+
+        return null;
+    }
 
     // Don't move these. The indices matter for the input menu.
 
@@ -202,6 +211,12 @@ public sealed class PlayerKeybind
 
     /// <summary>True if the binding for <paramref name="playerNumber"/> is not set.</summary>
     public bool Unbound(int playerNumber) => !Bound(playerNumber);
+
+    /// <summary>Checks if this keybind is from a mod.</summary>
+    public bool IsModded => gameAction > Plugin.highestVanillaActionId || gameAction == -1;
+
+    /// <summary>Checks if this keybind is from vanilla.</summary>
+    public bool IsVanilla => !IsModded;
 
     /// <summary>
     /// The current keycode configured for the given <paramref name="playerNumber"/> on keyboard.
