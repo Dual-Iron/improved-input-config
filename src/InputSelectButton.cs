@@ -263,7 +263,7 @@ sealed class InputSelectButton : SimpleButton
                 {
                     Options.ControlSetup cs = menu.CurrentControlSetup;
                     ControllerMap cm = ((category == 0) ? cs.gameControlMap : cs.uiControlMap);
-                    ActionElementMap ae = cs.GetActionElement(action, category, keybind.axisPositive);
+                    ActionElementMap ae = cs.IicGetActionElement(action, category, keybind.axisPositive);
                     menu.mappingContexts[category] = new InputMapper.Context
                     {
                         actionId = action,
@@ -275,7 +275,7 @@ sealed class InputSelectButton : SimpleButton
             }
 
             InputMenuHooks.remappingElementId = -1;
-            ActionElementMap aem = menu.CurrentControlSetup.GetActionElement(keybind.gameAction, 0, keybind.axisPositive);
+            ActionElementMap aem = menu.CurrentControlSetup.IicGetActionElement(keybind.gameAction, 0, keybind.axisPositive);
             if (aem != null)
                 InputMenuHooks.remappingElementId = aem.elementIdentifierId;
 

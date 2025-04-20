@@ -82,6 +82,8 @@ namespace ImprovedInput
             return list;
         }
 
+        static readonly string version = "1.3";
+
         // remember unloaded keybinds for each controller
         static readonly Dictionary<string, string[]> controllerUnknownUnboundKeys = new(); // TODO implement this later
         static readonly Dictionary<string, string[][]> controllerUnknownBoundKeys = new();
@@ -106,10 +108,11 @@ namespace ImprovedInput
                 }
                 else
                 {
-                    string[] bind = new string[3];
+                    string[] bind = new string[4];
                     bind[0] = keybinds[k].Id;
                     bind[1] = aem.elementIdentifierId.ToString();
                     bind[2] = aem.elementType.ToString();
+                    bind[3] = aem.axisRange.ToString();
                     bound.Add(bind);
                 }
             }
@@ -122,7 +125,7 @@ namespace ImprovedInput
             
             // serializing
             List<string> list = new List<string>();
-            list.Add("1"); // version
+            list.Add(version); // version
             list.Add(unbound.Count.ToString());
             list.Add(bound.Count.ToString());
 
@@ -147,47 +150,56 @@ namespace ImprovedInput
             if (!PlayerPrefs.HasKey(key))
                 return map;
 
-            string value = PlayerPrefs.GetString(key);
-            string[] data = value.Split('|');
-            if (data[0] != "1")
-                return map;
-
-            Plugin.Logger.LogInfo("loading controller: " + key + "\ndata: " + value);
-
-            // reading unbound keybinds
-            int offset = 3;
-            int numUnbound = int.Parse(data[1]);
-
-            // TODO Implement unbound keybind checking when default keybinds are reimplemented
-            
-            // reading bound keybinds
-            offset += numUnbound;
-            int numBound = int.Parse(data[2]);
-            List<string[]> unknownBounds = new List<string[]>();
-            
-            for (int i = offset; i < offset + numBound * 3; i += 3)
+            try
             {
-                PlayerKeybind keybind = PlayerKeybind.Get(data[i]);
-                if (keybind == null)
+                string value = PlayerPrefs.GetString(key);
+                string[] data = value.Split('|');
+                if (data[0] != version)
+                    return map;
+
+                Plugin.Logger.LogInfo("loading controller: " + key + "\ndata: " + value);
+
+                // reading unbound keybinds
+                int offset = 3;
+                int numUnbound = int.Parse(data[1]);
+
+                // TODO Implement unbound keybind checking when default keybinds are reimplemented
+
+                // reading bound keybinds
+                offset += numUnbound;
+                int numBound = int.Parse(data[2]);
+                List<string[]> unknownBounds = new List<string[]>();
+
+                for (int i = offset; i < offset + numBound * 4; i += 4)
                 {
-                    unknownBounds.Add(new string[] { data[i], data[i + 1], data[i + 2] });
-                    continue;
+                    PlayerKeybind keybind = PlayerKeybind.Get(data[i]);
+                    if (keybind == null)
+                    {
+                        unknownBounds.Add(new string[] { data[i], data[i + 1], data[i + 2], data[i + 3] });
+                        continue;
+                    }
+
+                    int elementId = int.Parse(data[i + 1]);
+                    ControllerElementType type;
+                    AxisRange range;
+
+                    if (!Enum.TryParse(data[i + 2], out type) || !Enum.TryParse(data[i + 3], out range) || keybind.gameAction == -1)
+                    {
+                        Plugin.Logger.LogError("Failed to parse controller data for " + key);
+                        continue;
+                    }
+
+                    map.CreateElementMap(keybind.gameAction, Pole.Positive, elementId, type, range, false);
                 }
 
-                int elementId = int.Parse(data[i + 1]);
-                ControllerElementType type;
-
-                if (!Enum.TryParse(data[i + 2], out type) || keybind.gameAction == -1)
-                {
-                    Plugin.Logger.LogError("Failed to parse controller data for " + key);
-                    continue;
-                }
-                
-                map.CreateElementMap(keybind.gameAction, Pole.Positive, elementId, type, AxisRange.Full, false);
+                controllerUnknownBoundKeys.Remove(key);
+                controllerUnknownBoundKeys.Add(key, unknownBounds.ToArray());
             }
-
-            controllerUnknownBoundKeys.Remove(key);
-            controllerUnknownBoundKeys.Add(key, unknownBounds.ToArray());
+            catch (Exception e)
+            {
+                Plugin.Logger.LogError("Failed to parse controller data for " + key);
+                Debug.LogException(e);
+            }
             return map;
         }
     }

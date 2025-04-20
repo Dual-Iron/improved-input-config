@@ -52,13 +52,13 @@ public sealed class PlayerKeybind
     public static readonly PlayerKeybind Map = Register("vanilla:map", "Vanilla", "Map", 11);
 
     /// <summary>The UP button. Unconfigurable for controllers.</summary>
-    public static readonly PlayerKeybind Up = Register("vanilla:up", "Vanilla", "Up", 1, 6, true);
+    public static readonly PlayerKeybind Up = Register("vanilla:up", "Vanilla", "Up", 2, 7);
     /// <summary>The LEFT button. Unconfigurable for controllers.</summary>
-    public static readonly PlayerKeybind Left = Register("vanilla:left", "Vanilla", "Left", 2, 7);
+    public static readonly PlayerKeybind Left = Register("vanilla:left", "Vanilla", "Left", 1, 6, true);
     /// <summary>The DOWN button. Unconfigurable for controllers.</summary>
-    public static readonly PlayerKeybind Down = Register("vanilla:down", "Vanilla", "Down", 1, 6);
+    public static readonly PlayerKeybind Down = Register("vanilla:down", "Vanilla", "Down", 2, 7, true);
     /// <summary>The RIGHT button. Unconfigurable for controllers.</summary>
-    public static readonly PlayerKeybind Right = Register("vanilla:right", "Vanilla", "Right", 2, 7, true);
+    public static readonly PlayerKeybind Right = Register("vanilla:right", "Vanilla", "Right", 1, 6);
 
     /// <summary>
     /// Registers a new keybind.

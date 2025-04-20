@@ -86,7 +86,7 @@ namespace ImprovedInput
                 };
             }
 
-            ActionElementMap actionElementMap = controlSetup.GetActionElement(keybind.gameAction, 0, keybind.axisPositive);
+            ActionElementMap actionElementMap = controlSetup.IicGetActionElement(keybind.gameAction, 0, keybind.axisPositive);
             string buttonName = "None"; // TODO change to "None" or "-"
             if (actionElementMap != null)
             {
@@ -368,25 +368,24 @@ namespace ImprovedInput
             Options options = self.manager.rainWorld.options;
             Options.ControlSetup cs = options.controls[options.playerToSetInputFor];
 
-            ActionElementMap aem = cs.GetActionElement(mc[0].actionId, 0, (mc[0].actionRange == AxisRange.Positive) ? true : false);
-            if (remappingElementId == aem.elementIdentifierId)
+            for (int m = 0; m < mc.Length; m++)
             {
-                self.PlaySound(SoundID.MENU_Checkbox_Uncheck);
-                cs.gameControlMap.DeleteElementMap(aem.id);
-                aem = cs.GetActionElement(mc[0].actionId, 1, (mc[0].actionRange == AxisRange.Positive) ? true : false);
-                if (aem != null)
-                    cs.uiControlMap.DeleteElementMap(aem.id);
-            }
-            else
-            {
-                self.PlaySound(SoundID.MENU_Button_Successfully_Assigned);
-                for (int m = 0; m < mc.Length; m++)
+                if (mc[m] == null)
+                    continue;
+
+                ActionElementMap aem = cs.IicGetActionElement(mc[m].actionId, m, (mc[m].actionRange == AxisRange.Positive) ? true : false);
+                if (aem != null && remappingElementId == aem.elementIdentifierId)
                 {
-                    if (mc[m] != null)
-                    {
-                        string text2 = ((mc[m].actionRange == AxisRange.Positive) ? "1" : "0");
-                        cs.mouseButtonMappings[mc[m].actionId + "," + text2] = -1;
-                    }
+                    cs.gameControlMap.DeleteElementMap(aem.id);
+                    if (m == 0)
+                        self.PlaySound(SoundID.MENU_Checkbox_Uncheck);
+                }
+                else
+                {
+                    string text2 = ((mc[m].actionRange == AxisRange.Positive) ? "1" : "0");
+                    cs.mouseButtonMappings[mc[m].actionId + "," + text2] = -1;
+                    if (m == 0)
+                        self.PlaySound(SoundID.MENU_Button_Successfully_Assigned);
                 }
             }
         }
