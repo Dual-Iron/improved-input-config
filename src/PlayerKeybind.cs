@@ -237,7 +237,7 @@ public sealed class PlayerKeybind
     /// The current keycode configured for the given <paramref name="playerNumber"/> on keyboard.
     /// Returns None if the player is on controller or uses mouse for input.
     /// </summary>
-    [Obsolete("IIC 2.0 does not use KeyCodes. This method is unreliable")]
+    [Obsolete("IIC 2 does not use KeyCodes. This method is unreliable")]
     public KeyCode Keyboard(int playerNumber)
     {
         if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers) {
@@ -254,7 +254,7 @@ public sealed class PlayerKeybind
     /// The current keycode configured for the given <paramref name="playerNumber"/> on a controller.
     /// Returns None if the player is on keyboard or using axis inputs.
     /// </summary>
-    [Obsolete("IIC 2.0 does not use KeyCodes. This method is unreliable")]
+    [Obsolete("IIC 2 does not use KeyCodes. This method is unreliable")]
     public KeyCode Gamepad(int playerNumber)
     {
         if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers)
@@ -269,7 +269,7 @@ public sealed class PlayerKeybind
     }
 
     /// <summary>The current recognized keycode for the given <paramref name="playerNumber"/>.</summary>
-    [Obsolete("IIC 2.0 does not use KeyCodes. This method is unreliable")]
+    [Obsolete("IIC 2 does not use KeyCodes. This method is unreliable")]
     public KeyCode CurrentBinding(int playerNumber)
     {
         if (playerNumber < 0 || playerNumber >= CustomInputExt.MaxPlayers) {

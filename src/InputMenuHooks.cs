@@ -82,18 +82,37 @@ namespace ImprovedInput
                     0 => "Left Click",
                     1 => "Right Click",
                     2 => "Middle Click",
-                    _ => "Mouse " + num,
+                    _ => "Mouse " + num + 1,
                 };
             }
 
             ActionElementMap actionElementMap = controlSetup.IicGetActionElement(keybind.gameAction, 0, keybind.axisPositive);
-            string buttonName = "None"; // TODO change to "None" or "-"
+            string buttonName = "None";
             if (actionElementMap != null)
             {
                 buttonName = actionElementMap.elementIdentifierName;
             }
 
-            //TODO Color code
+            // Getting button colors
+            Options.ControlSetup.Preset ty = Custom.rainWorld.options.controls[player].GetActivePreset();
+            if (ty == Options.ControlSetup.Preset.XBox)
+                color = buttonName switch
+                {
+                    "A" => new Color32(60, 219, 78, 255),
+                    "B" => new Color32(208, 66, 66, 255),
+                    "X" => new Color32(64, 204, 208, 255),
+                    "Y" => new Color32(236, 219, 51, 255),
+                    _ => null
+                };
+            else if (ty == Options.ControlSetup.Preset.PS4DualShock || ty == Options.ControlSetup.Preset.PS5DualSense)
+                color = buttonName switch
+                {
+                    "Cross" => new Color32(137, 164, 244, 255),
+                    "Circle" => new Color32(244, 102, 100, 255),
+                    "Square" => new Color32(237, 137, 202, 255),
+                    "Triangle" => new Color32(40, 237, 174, 255),
+                    _ => null
+                };
 
             return buttonName;
         }
