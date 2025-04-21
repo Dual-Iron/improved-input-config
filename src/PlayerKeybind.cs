@@ -207,7 +207,22 @@ public sealed class PlayerKeybind
     internal bool axisPositive = true;
 
     /// <summary>True if the binding for <paramref name="playerNumber"/> is set.</summary>
-    public bool Bound(int playerNumber) => Controls[playerNumber].gameControlMap.ContainsAction(gameAction);
+    //public bool Bound(int playerNumber) => Controls[playerNumber].gameControlMap.ContainsAction(gameAction);
+    public bool Bound(int playerNumber)
+    {
+        Options.ControlSetup controlSetup = Controls[playerNumber];
+        if (controlSetup == null)
+            return false;
+
+        if (controlSetup.gameControlMap.ContainsAction(gameAction))
+            return true;
+
+        string key = gameAction + "," + (axisPositive ? "1" : "0");
+        if (controlSetup.mouseButtonMappings.ContainsKey(key))
+            return controlSetup.mouseButtonMappings[key] > -1;
+
+        return false;
+    }
 
     /// <summary>True if the binding for <paramref name="playerNumber"/> is not set.</summary>
     public bool Unbound(int playerNumber) => !Bound(playerNumber);

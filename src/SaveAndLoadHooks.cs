@@ -27,6 +27,7 @@ namespace ImprovedInput
             new Hook(AccessTools.Method(typeof(RewiredUserDataStore), "SaveControllerMap", new Type[2] { typeof(Rewired.Player), typeof(ControllerMap)}), RewiredUserDataStore_SaveControllerMap_Hook);
             new Hook(AccessTools.Method(typeof(RewiredUserDataStore), "LoadControllerMap", new Type[4] { typeof(Rewired.Player), typeof(ControllerIdentifier), typeof(int), typeof(int) }), RewiredUserDataStore_LoadControllerMap_Hook);
 
+            // saving and loading mouse keybinds
             On.Options.ControlSetup.ToString += ControlSetup_ToString;
             On.Options.ControlSetup.FromString += ControlSetup_FromString;
             IL.Options.ControlSetup.ToString += ControlSetup_ToStringIL;
