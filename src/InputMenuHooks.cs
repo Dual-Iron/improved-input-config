@@ -82,7 +82,7 @@ namespace ImprovedInput
                     0 => "Left Click",
                     1 => "Right Click",
                     2 => "Middle Click",
-                    _ => "Mouse " + num + 1,
+                    _ => "Mouse " + (num + 1),
                 };
             }
 

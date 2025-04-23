@@ -79,7 +79,7 @@ public sealed class PlayerKeybind
     /// <param name="gamepadPreset">The default value for controllers.</param>
     /// <returns>A new <see cref="PlayerKeybind"/> to be used like <c>player.JustPressed(keybind)</c>.</returns>
     /// <exception cref="ArgumentException">The <paramref name="id"/> is invalid or already taken.</exception>
-    [Obsolete("Keycodes are no longer supported. They will be ignored")]
+    //[Obsolete("Keycodes are no longer supported. They will be ignored")]
     public static PlayerKeybind Register(string id, string mod, string name, KeyCode keyboardPreset, KeyCode gamepadPreset)
     {
         return Register(id, mod, name);
@@ -96,7 +96,7 @@ public sealed class PlayerKeybind
     /// <param name="xboxPreset">The default value for Xbox controllers.</param>
     /// <returns>A new <see cref="PlayerKeybind"/> to be used like <c>player.JustPressed(keybind)</c>.</returns>
     /// <exception cref="ArgumentException">The <paramref name="id"/> is invalid or already taken.</exception>
-    [Obsolete("Keycodes are no longer supported. They will be ignored")]
+//[Obsolete("Keycodes are no longer supported. They will be ignored")]
     public static PlayerKeybind Register(string id, string mod, string name, KeyCode keyboardPreset, KeyCode gamepadPreset, KeyCode xboxPreset)
     {
         return Register(id, mod, name);
@@ -110,7 +110,7 @@ public sealed class PlayerKeybind
     /// <param name="name">A short name to show in the Input Settings screen.</param>
     /// <returns>A new <see cref="PlayerKeybind"/> to be used like <c>player.JustPressed(keybind)</c>.</returns>
     /// <exception cref="ArgumentException">The <paramref name="id"/> is invalid or already taken.</exception>
-    public static PlayerKeybind Register(string id, string mod, string name)
+    private static PlayerKeybind Register(string id, string mod, string name)
     {
         Validate(id, mod, name);
         PlayerKeybind k = Register(id, mod, name, -1);
